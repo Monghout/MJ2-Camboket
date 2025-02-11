@@ -6,7 +6,8 @@ export interface IUser extends Document {
   name: string;
   role: "buyer" | "seller";
   subscriptionStatus: "active" | "inactive";
-  createdAt: Date;
+  photo: string;
+  socialMediaLinks: string[];
 }
 
 const UserSchema = new Schema<IUser>(
@@ -20,6 +21,8 @@ const UserSchema = new Schema<IUser>(
       enum: ["active", "inactive"],
       default: "inactive",
     },
+    photo: { type: String, default: "" },
+    socialMediaLinks: { type: [String], default: [] },
   },
   { timestamps: true }
 );

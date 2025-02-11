@@ -1,5 +1,10 @@
 import { SignIn } from "@clerk/nextjs";
 
 export default function LoginPage() {
-  return <SignIn />;
+  return (
+    <SignIn
+      afterSignInUrl="/page"
+      afterSignUpUrl="/page" // Redirect to homepage after sign-in
+    />
+  );
 }
