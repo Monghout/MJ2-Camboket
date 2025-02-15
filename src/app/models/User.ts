@@ -8,6 +8,8 @@ export interface IUser extends Document {
   subscriptionStatus: "active" | "inactive";
   photo: string;
   socialMediaLinks: string[];
+  isOnline: boolean;
+  lastSeen: Date;
 }
 
 const UserSchema = new Schema<IUser>(
@@ -23,6 +25,8 @@ const UserSchema = new Schema<IUser>(
     },
     photo: { type: String, default: "" },
     socialMediaLinks: { type: [String], default: [] },
+    isOnline: { type: Boolean, default: false },
+    lastSeen: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );

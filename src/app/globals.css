@@ -86,3 +86,49 @@ body {
     @apply bg-background text-foreground;
   }
 }
+.chat-container {
+  width: 100%;
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  border: 1px solid #ddd;
+  background-color: #f9f9f9;
+}
+
+.messages-list {
+  flex: 1;
+  overflow-y: scroll;
+  margin-bottom: 10px;
+}
+
+.message {
+  padding: 8px;
+  margin: 4px 0;
+  border-radius: 10px;
+  max-width: 80%;
+}
+
+.sent {
+  background-color: #d0f0c0;
+  align-self: flex-end;
+}
+
+.received {
+  background-color: #f0f0f0;
+  align-self: flex-start;
+}
+
+.message-input {
+  padding: 8px;
+  width: 80%;
+  margin-right: 10px;
+}
+
+.send-button {
+  padding: 8px 12px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  cursor: pointer;
+}

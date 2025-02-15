@@ -2,6 +2,8 @@
 
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import { useUser } from "@clerk/nextjs";
+import ChatPage from "./displayChat";
+import CheckoutButton from "./payment-button";
 
 export default function Header() {
   const { user } = useUser();
@@ -23,7 +25,10 @@ export default function Header() {
         </div>
 
         {/* Right Side - User Button */}
+
         <div className="flex items-center gap-4">
+          {" "}
+          <CheckoutButton />
           {user ? (
             <UserButton afterSignOutUrl="/" />
           ) : (
