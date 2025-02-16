@@ -36,6 +36,11 @@ export default function UserRoleCheck() {
           const foundUser = data.users.find((u: User) => u.clerkId === user.id);
           if (foundUser) {
             setCurrentUser(foundUser);
+          } else {
+            // If user not found, trigger a reload after 2 seconds
+            setTimeout(() => {
+              window.location.reload();
+            }, 2000);
           }
         }
       } catch (error) {
@@ -82,7 +87,6 @@ export default function UserRoleCheck() {
 
       const data = await res.json();
       if (data.success) {
-        // Close the overlay after canceling the role change
         setShowOverlay(false);
         setCurrentUser((prev) =>
           prev
@@ -95,7 +99,6 @@ export default function UserRoleCheck() {
     }
   };
 
-  // Don't display anything if user isn't logged in
   if (!isLoaded || !user) {
     return null;
   }
@@ -105,7 +108,7 @@ export default function UserRoleCheck() {
   }
 
   if (!currentUser) {
-    return <div className="p-4">User not found</div>;
+    return <div className="p-4">User not found. Refreshing...</div>;
   }
 
   return (
@@ -126,7 +129,6 @@ export default function UserRoleCheck() {
         </div>
       )}
 
-      {/* Overlay */}
       {showOverlay && (
         <div className="fixed inset-0 border-white bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
           <div
