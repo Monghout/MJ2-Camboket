@@ -9,7 +9,9 @@ import {
   SignedOut,
   UserButton,
 } from "@clerk/nextjs";
-import OnlineStatusTracker from "@/isOnlineTracker";
+import { EdgeStoreProvider } from "../lib/edgestore";
+
+// import OnlineStatusTracker from "@/isOnlineTracker";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -34,10 +36,10 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body>
-          {" "}
-          <OnlineStatusTracker />
-          <SignedOut> {children}</SignedOut>
-          <SignedIn> {children}</SignedIn>
+          <EdgeStoreProvider>
+            <SignedOut> {children}</SignedOut>
+            <SignedIn> {children}</SignedIn>
+          </EdgeStoreProvider>
         </body>
       </html>
     </ClerkProvider>

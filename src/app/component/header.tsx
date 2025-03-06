@@ -2,7 +2,6 @@
 
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import { useUser } from "@clerk/nextjs";
-import ChatPage from "./displayChat";
 import CheckoutButton from "./payment-button";
 
 export default function Header() {
@@ -25,14 +24,14 @@ export default function Header() {
         </div>
 
         {/* Right Side - User Button */}
-
         <div className="flex items-center gap-4">
-          {" "}
           <CheckoutButton />
           {user ? (
             <UserButton afterSignOutUrl="/" />
           ) : (
-            <SignInButton mode="modal" />
+            <div className="px-6 py-3 bg-blue-500 text-white text-lg rounded-lg hover:bg-blue-600 transition">
+              <SignInButton mode="modal" />
+            </div>
           )}
         </div>
       </header>

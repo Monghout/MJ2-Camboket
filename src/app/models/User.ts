@@ -10,6 +10,7 @@ export interface IUser extends Document {
   socialMediaLinks: string[];
   isOnline: boolean;
   lastSeen: Date;
+  stream: string | null; // Change from boolean to string (to store ObjectId)
 }
 
 const UserSchema = new Schema<IUser>(
@@ -27,6 +28,7 @@ const UserSchema = new Schema<IUser>(
     socialMediaLinks: { type: [String], default: [] },
     isOnline: { type: Boolean, default: false },
     lastSeen: { type: Date, default: Date.now },
+    stream: { type: String, default: null }, // Change from boolean to string
   },
   { timestamps: true }
 );

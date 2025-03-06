@@ -24,7 +24,7 @@ export async function POST(req: Request) {
           price_data: {
             currency: "usd",
             product_data: { name: "Upgrade to Seller" },
-            unit_amount: 5000, // $50 in cents
+            unit_amount: 749, // $50 in cents
           },
           quantity: 1,
         },

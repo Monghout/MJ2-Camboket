@@ -9,6 +9,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Search, Filter } from "lucide-react";
 import UserList from "./userlist";
 import Chat from "@/app/component/chat"; // Assuming the Chat component is correctly imported
+// import LiveStreamPage from "../livestream/[id]/page";
+import MuxPlayer from "@mux/mux-player-react";
+import CompareUserAndSellerIds from "./userCompare";
+import StreamIdDisplay from "./userCompare";
+// import LiveStreamsPage from "./LiveStreamsPage";
+
+// import LivePage from './livePage';
+// import LiveStreamPage from "../live/[id]/page";
 
 export default function LandingPage() {
   const [showChat, setShowChat] = useState(false);
@@ -24,7 +32,7 @@ export default function LandingPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="md:col-span-1">
           <SellersPanel />
-        </div>
+        </div>{" "}
         <div className="md:col-span-3">
           <ProductShowcase />
         </div>
@@ -48,54 +56,13 @@ export default function LandingPage() {
           Filter
         </Button>
       </div>
-
       {/* Live Stream Placeholders */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Card>
-          <CardContent className="p-4">
-            <div className="aspect-video bg-gray-200 mb-4 flex items-center justify-center">
-              <span className="text-red-500 font-bold">LIVE</span>
-            </div>
-            <h3 className="font-semibold mb-2">Seller Name 1</h3>
-            <p className="text-sm text-gray-600">Product Category</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="aspect-video bg-gray-200 mb-4 flex items-center justify-center">
-              <span className="text-red-500 font-bold">LIVE</span>
-            </div>
-            <h3 className="font-semibold mb-2">Seller Name 2</h3>
-            <p className="text-sm text-gray-600">Product Category</p>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Chat Bubble Icon */}
-      <div
-        className="fixed bottom-4 right-4 p-4 bg-blue-500 text-white rounded-full cursor-pointer shadow-lg hover:bg-blue-600 transition"
-        onClick={toggleChat}
-      >
-        💬
+      <div className="p-8">
+        <h1 className="text-2xl font-bold mb-6">Stream Information</h1>
+        <StreamIdDisplay />
       </div>
-
-      {/* Chat Popup */}
-      {showChat && (
-        <div className="fixed bottom-16 right-4 w-80 h-96 bg-white border border-gray-200 rounded-lg shadow-lg">
-          <div className="h-full flex flex-col">
-            <div className="flex justify-between items-center p-4 bg-gray-100 border-b">
-              <h3 className="text-xl font-semibold">Chat</h3>
-              <button className="text-red-500" onClick={toggleChat}>
-                Close
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4"></div>
-            <div className="p-4 border-t">
-              {/* You can add an input box here */}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* <LiveStreamsPage /> */}
     </div>
   );
 }
