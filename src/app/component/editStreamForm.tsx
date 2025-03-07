@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
+import ProductUpload from "@/app/component/LiveForm/ProductUpload";
+import ThumbnailUpload from "@/app/component/LiveForm/ThumbnailUpload"; // Use the new ThumbnailUpload component
 
 interface EditStreamFormProps {
   stream: {
@@ -10,8 +12,13 @@ interface EditStreamFormProps {
     title: string;
     description: string;
     category: string;
-    products: any[];
-    thumbnail: string | null;
+    products: {
+      title: string;
+      image: string;
+      price: number;
+      description: string;
+    }[];
+    thumbnail: string | null; // Now storing EdgeStore URL
     isLive: boolean;
     streamKey: string;
     playbackId: string;
@@ -27,12 +34,12 @@ export default function EditStreamForm({
   const [title, setTitle] = useState(stream.title);
   const [description, setDescription] = useState(stream.description);
   const [category, setCategory] = useState(stream.category);
-  const [thumbnail, setThumbnail] = useState(stream.thumbnail || "");
+  const [thumbnail, setThumbnail] = useState<string | null>(stream.thumbnail);
   const [isLive, setIsLive] = useState(stream.isLive);
   const [loading, setLoading] = useState(false);
-  const [isDragging, setIsDragging] = useState(false); // Track drag state
+  const [products, setProducts] = useState(stream.products);
+  const [error, setError] = useState<string | null>(null);
 
-  // Define categories
   const categories = [
     "Electronics",
     "Phones",
@@ -46,42 +53,19 @@ export default function EditStreamForm({
     "Beauty",
   ];
 
-  // Handle file upload
-  const handleFileUpload = useCallback((file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        setThumbnail(e.target.result as string); // Set the thumbnail as a base64 string
-      }
-    };
-    reader.readAsDataURL(file);
-  }, []);
-
-  // Handle drag events
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("image/")) {
-      handleFileUpload(file);
+  // Handle product updates
+  const handleProductUpdate = (
+    index: number,
+    updatedProduct: {
+      title: string;
+      image: string;
+      price: number;
+      description: string;
     }
-  };
-
-  // Handle file input change
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith("image/")) {
-      handleFileUpload(file);
-    }
+  ) => {
+    const updatedProducts = [...products];
+    updatedProducts[index] = updatedProduct;
+    setProducts(updatedProducts);
   };
 
   // Handle form submission
@@ -95,15 +79,16 @@ export default function EditStreamForm({
           title,
           description,
           category,
-          thumbnail,
+          thumbnail, // Now storing EdgeStore URL
           isLive,
+          products,
         }),
       });
 
       if (!response.ok) throw new Error("Failed to update stream");
 
       const updatedStream = await response.json();
-      onUpdate(updatedStream); // Pass updated data back to the parent
+      onUpdate(updatedStream);
     } catch (error) {
       console.error(error);
     } finally {
@@ -160,45 +145,40 @@ export default function EditStreamForm({
         />
       </div>
 
-      {/* Thumbnail Upload */}
+      {/* Thumbnail Upload Section */}
       <div className="mt-4">
-        <label className="block text-sm font-medium text-gray-700">
-          Thumbnail
-        </label>
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`mt-1 p-6 border-2 border-dashed rounded-lg text-center ${
-            isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300"
-          }`}
-        >
-          <p className="text-gray-600">
-            Drag & drop an image here, or{" "}
-            <label
-              htmlFor="thumbnail-upload"
-              className="text-blue-500 cursor-pointer hover:underline"
-            >
-              click to upload
-            </label>
-          </p>
-          <input
-            id="thumbnail-upload"
-            type="file"
-            accept="image/*"
-            onChange={handleFileInputChange}
-            className="hidden"
+        <ThumbnailUpload
+          onUpload={setThumbnail}
+          error={error}
+          setError={setError}
+        />
+      </div>
+
+      {/* Product Upload Section */}
+      <div className="mt-4">
+        <h3 className="text-lg font-medium text-gray-700">Products</h3>
+        {products.map((product, index) => (
+          <ProductUpload
+            key={index}
+            product={product}
+            index={index}
+            onUpdate={handleProductUpdate}
+            error={error}
+            setError={setError}
           />
-          {thumbnail && (
-            <div className="mt-4">
-              <img
-                src={thumbnail}
-                alt="Thumbnail Preview"
-                className="w-32 h-32 object-cover rounded mx-auto"
-              />
-            </div>
-          )}
-        </div>
+        ))}
+        <button
+          type="button"
+          onClick={() =>
+            setProducts([
+              ...products,
+              { title: "", image: "", price: 0, description: "" },
+            ])
+          }
+          className="mt-2 text-blue-500 hover:text-blue-700"
+        >
+          Add Product
+        </button>
       </div>
 
       {/* Stream Status */}

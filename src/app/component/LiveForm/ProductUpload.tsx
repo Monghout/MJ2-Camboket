@@ -4,9 +4,17 @@ import { useState, ChangeEvent } from "react";
 import { useEdgeStore } from "@/lib/edgestore";
 
 interface ProductUploadProps {
-  product: { title: string; image: string };
+  product: { title: string; image: string; price: number; description: string };
   index: number;
-  onUpdate: (index: number, product: { title: string; image: string }) => void;
+  onUpdate: (
+    index: number,
+    product: {
+      title: string;
+      image: string;
+      price: number;
+      description: string;
+    }
+  ) => void;
   error: string | null;
   setError: (error: string | null) => void;
 }
@@ -37,6 +45,7 @@ const ProductUpload = ({
 
   return (
     <div className="mb-4 p-3 border rounded">
+      {/* Product Title */}
       <input
         type="text"
         placeholder="Product title"
@@ -44,6 +53,29 @@ const ProductUpload = ({
         onChange={(e) => onUpdate(index, { ...product, title: e.target.value })}
         className="border rounded p-2 mb-2 w-full"
       />
+
+      {/* Product Price */}
+      <input
+        type="number"
+        placeholder="Price"
+        value={product.price}
+        onChange={(e) =>
+          onUpdate(index, { ...product, price: parseFloat(e.target.value) })
+        }
+        className="border rounded p-2 mb-2 w-full"
+      />
+
+      {/* Product Description */}
+      <textarea
+        placeholder="Product description"
+        value={product.description}
+        onChange={(e) =>
+          onUpdate(index, { ...product, description: e.target.value })
+        }
+        className="border rounded p-2 mb-2 w-full"
+      />
+
+      {/* Product Image Upload */}
       <input
         type="file"
         onChange={(e) => e.target.files && handleUpload(e.target.files[0])}
