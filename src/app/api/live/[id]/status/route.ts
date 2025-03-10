@@ -2,29 +2,29 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/app/models/User";
 
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: Request, context: { params: { id: string } }) {
   try {
-    // Validate clerkId
-    if (!params.id || typeof params.id !== "string") {
+    // Validate user ID
+    if (!context.params.id || typeof context.params.id !== "string") {
       return NextResponse.json(
-        { error: "Invalid clerkId provided" },
+        { error: "Invalid user ID provided" },
         { status: 400 }
       );
     }
 
     await connectDB(); // Ensure database connection
 
-    // Fetch the user by clerkId
-    const user = await User.findOne({ _id: params.id }, { isOnline: 1 });
+    // Fetch only the isOnline field for the given user ID
+    const user = await User.findOne(
+      { _id: context.params.id },
+      { isOnline: 1 }
+    );
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Return the isOnline status
+    // Return only the isOnline status
     return NextResponse.json(
       { success: true, isOnline: user.isOnline },
       { status: 200 }
