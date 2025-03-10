@@ -1,39 +1,17 @@
 import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import User from "@/app/models/User";
+import LiveStream from "@/app/models/LiveStream"; // Adjust this to your DB model
 
-export async function GET(req: Request, context: { params: { id: string } }) {
+export async function GET(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
   try {
-    // Validate user ID
-    if (!context.params.id || typeof context.params.id !== "string") {
-      return NextResponse.json(
-        { error: "Invalid user ID provided" },
-        { status: 400 }
-      );
-    }
+    const stream = await LiveStream.findById(params.id);
+    if (!stream) return NextResponse.json({ isLive: false }, { status: 404 });
 
-    await connectDB(); // Ensure database connection
-
-    // Fetch only the isOnline field for the given user ID
-    const user = await User.findOne(
-      { _id: context.params.id },
-      { isOnline: 1 }
-    );
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Return only the isOnline status
-    return NextResponse.json(
-      { success: true, isOnline: user.isOnline },
-      { status: 200 }
-    );
+    return NextResponse.json({ isLive: stream.status === "live" });
   } catch (error) {
-    console.error("❌ Error fetching user:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch user" },
-      { status: 500 }
-    );
+    console.error("Error fetching stream status:", error);
+    return NextResponse.json({ isLive: false }, { status: 500 });
   }
 }

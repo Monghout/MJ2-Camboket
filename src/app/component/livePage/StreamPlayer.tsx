@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import MuxPlayer from "@mux/mux-player-react";
 import { Badge } from "@/components/ui/badge";
-import StatusBadge from "@/app/component/statusBadge";
 
 interface StreamPlayerProps {
   playbackId: string;
@@ -16,15 +15,39 @@ export default function StreamPlayer({
 }: StreamPlayerProps) {
   const [isStreamActive, setIsStreamActive] = useState(false);
 
-  // Handle play event
-  const handlePlay = () => {
-    setIsStreamActive(true); // Stream is active
+  // Function to check stream status using Mux's Playback ID Status API
+  const checkStreamStatus = async () => {
+    try {
+      const response = await fetch(
+        `https://api.mux.com/video/v1/playback-ids/${playbackId}`,
+        {
+          headers: {
+            Authorization: `Basic ${Buffer.from(
+              `${process.env.MUX_TOKEN_ID}:${process.env.MUX_TOKEN_SECRET}`
+            ).toString("base64")}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      // Check if the stream is active
+      if (data.data && data.data.status === "active") {
+        setIsStreamActive(true); // Stream is active
+      } else {
+        setIsStreamActive(false); // Stream is inactive
+      }
+    } catch (error) {
+      console.error("Error fetching stream status:", error);
+      setIsStreamActive(false); // Assume stream is inactive if there's an error
+    }
   };
 
-  // Handle pause event
-  const handlePause = () => {
-    setIsStreamActive(false); // Stream is inactive
-  };
+  // Poll the API every 5 seconds to check stream status
+  useEffect(() => {
+    const interval = setInterval(checkStreamStatus, 5000); // Check every 5 seconds
+    return () => clearInterval(interval); // Cleanup interval on unmount
+  }, [playbackId]);
 
   return (
     <div className="relative">
@@ -34,8 +57,6 @@ export default function StreamPlayer({
         autoPlay
         muted
         className="w-full aspect-video"
-        onPlay={handlePlay} // Listen for play event
-        onPause={handlePause} // Listen for pause event
       />
 
       {/* Show "Stream Offline" message only if the stream is not active */}
@@ -46,9 +67,9 @@ export default function StreamPlayer({
       )}
 
       {/* Status badge */}
-      <div className="absolute top-4 right-4">
+      {/* <div className="absolute top-4 right-4">
         <StatusBadge isLive={isLive} isOnline={false} />
-      </div>
+      </div> */}
     </div>
   );
 }

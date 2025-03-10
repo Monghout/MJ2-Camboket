@@ -1,6 +1,6 @@
 "use client";
 
-import { notFound } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import EditStreamForm from "@/app/component/editStreamForm";
@@ -11,11 +11,8 @@ import StreamDetails from "@/app/component/livePage/StreamDetails";
 import SellerInfo from "@/app/component/livePage/SellerInfo";
 import FeaturedProducts from "@/app/component/livePage/FeaturedProducts";
 
-interface StreamPageProps {
-  params: { id: string };
-}
-
-export default function StreamPage({ params }: StreamPageProps) {
+export default function StreamPage() {
+  const { id } = useParams(); // Use useParams hook to access the dynamic id
   const { user } = useUser();
   const [stream, setStream] = useState<any>(null);
   const [seller, setSeller] = useState<any>(null);
@@ -23,10 +20,12 @@ export default function StreamPage({ params }: StreamPageProps) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    if (!id) return; // Ensure `id` exists before fetching
+
     const fetchStreamData = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/live/${params.id}`);
+        const response = await fetch(`/api/live/${id}`);
         if (!response.ok) throw new Error("Stream not found");
         const data = await response.json();
         setStream(data.stream);
@@ -39,11 +38,11 @@ export default function StreamPage({ params }: StreamPageProps) {
     };
 
     fetchStreamData();
-  }, [params.id]);
+  }, [id]); // Listen for `id` changes
 
   const handleRemoveProduct = async (productId: string) => {
     try {
-      const response = await fetch(`/api/live/${params.id}/products`, {
+      const response = await fetch(`/api/live/${id}/products`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productId }),
@@ -84,7 +83,7 @@ export default function StreamPage({ params }: StreamPageProps) {
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Stream Player */}
         <Card className="border-none shadow-xl overflow-hidden bg-black">
-          <StreamPlayer playbackId={stream.playbackId} isLive={stream.isLive} />
+          <StreamPlayer playbackId={stream.playbackId} isLive={false} />
         </Card>
 
         {/* Stream Content */}
