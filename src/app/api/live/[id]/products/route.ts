@@ -5,7 +5,7 @@ import LiveStream from "@/app/models/LiveStream"; // Ensure correct import path
 // DELETE method to remove a product from the stream
 export async function DELETE(
   req: Request,
-  { params }: { params: { [key: string]: string | string[] } }
+  { params }: { params: { id: string } } // Explicitly define `id` as a string
 ) {
   try {
     await connectDB();
@@ -19,10 +19,7 @@ export async function DELETE(
       );
     }
 
-    // Ensure `params.id` is a string (not an array)
-    const streamId = Array.isArray(params.id) ? params.id[0] : params.id;
-
-    const stream = await LiveStream.findById(streamId);
+    const stream = await LiveStream.findById(params.id);
     if (!stream) {
       return NextResponse.json({ error: "Stream not found" }, { status: 404 });
     }
