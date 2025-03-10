@@ -60,11 +60,6 @@ export default function StreamPlayer({
       />
 
       {/* Show "Stream Offline" message only if the stream is not active */}
-      {!isStreamActive && (
-        <div className="absolute top-0 left-0 w-full h-full flex justify-center items-center bg-black text-white text-xl font-bold">
-          Stream Offline
-        </div>
-      )}
 
       {/* Status badge */}
       {/* <div className="absolute top-4 right-4">
