@@ -29,17 +29,14 @@ export async function GET(
 }
 
 // PUT method to update the stream details
-export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(req: Request, context: { params: { id: string } }) {
   try {
     await connectDB();
 
     const body = await req.json(); // Get the data from the request body
 
     const updatedStream = await LiveStream.findByIdAndUpdate(
-      params.id, // Stream ID from URL
+      context.params.id, // Stream ID from URL
       { ...body }, // Update the fields with the request body
       { new: true } // Return the updated document
     );
