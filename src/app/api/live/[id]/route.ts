@@ -1,18 +1,14 @@
-// app/api/live/[id]/route.ts
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import LiveStream from "@/app/models/LiveStream"; // Ensure correct import path
 import User from "@/app/models/User"; // Import User model
 
-// GET method to fetch the stream and seller info
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+// ✅ Use Request + Context Correctly
+export async function GET(req: Request, context: { params: { id: string } }) {
   try {
     await connectDB();
 
-    const stream = await LiveStream.findById(params.id);
+    const stream = await LiveStream.findById(context.params.id);
     if (!stream)
       return NextResponse.json({ error: "Stream not found" }, { status: 404 });
 
@@ -28,17 +24,17 @@ export async function GET(
   }
 }
 
-// PUT method to update the stream details
+// ✅ Correct PUT method
 export async function PUT(req: Request, context: { params: { id: string } }) {
   try {
     await connectDB();
 
-    const body = await req.json(); // Get the data from the request body
+    const body = await req.json();
 
     const updatedStream = await LiveStream.findByIdAndUpdate(
-      context.params.id, // Stream ID from URL
-      { ...body }, // Update the fields with the request body
-      { new: true } // Return the updated document
+      context.params.id,
+      { ...body },
+      { new: true }
     );
 
     if (!updatedStream) {
