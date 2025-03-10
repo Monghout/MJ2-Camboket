@@ -18,18 +18,14 @@ export async function POST(req: Request) {
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
+      mode: "subscription", // Use subscription mode
       customer_email: email,
       line_items: [
         {
-          price_data: {
-            currency: "usd",
-            product_data: { name: "Upgrade to Seller" },
-            unit_amount: 749, // $50 in cents
-          },
+          price: process.env.STRIPE_SUBSCRIPTION_PRICE_ID, // Your Stripe price ID
           quantity: 1,
         },
       ],
-      mode: "payment",
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/payment/success?ClerkId=${userId}`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/`,
     });
@@ -42,8 +38,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
-
-export function GET() {
-  return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
 }

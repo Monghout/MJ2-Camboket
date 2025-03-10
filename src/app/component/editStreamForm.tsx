@@ -2,7 +2,23 @@
 
 import { useState } from "react";
 import ProductUpload from "@/app/component/LiveForm/ProductUpload";
-import ThumbnailUpload from "@/app/component/LiveForm/ThumbnailUpload"; // Use the new ThumbnailUpload component
+import ThumbnailUpload from "@/app/component/LiveForm/ThumbnailUpload";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { PlusCircle, Save, Video } from "lucide-react";
 
 interface EditStreamFormProps {
   stream: {
@@ -18,7 +34,7 @@ interface EditStreamFormProps {
       price: number;
       description: string;
     }[];
-    thumbnail: string | null; // Now storing EdgeStore URL
+    thumbnail: string | null;
     isLive: boolean;
     streamKey: string;
     playbackId: string;
@@ -79,7 +95,7 @@ export default function EditStreamForm({
           title,
           description,
           category,
-          thumbnail, // Now storing EdgeStore URL
+          thumbnail,
           isLive,
           products,
         }),
@@ -91,121 +107,172 @@ export default function EditStreamForm({
       onUpdate(updatedStream);
     } catch (error) {
       console.error(error);
+      setError("Failed to update stream. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  const addNewProduct = () => {
+    setProducts([
+      ...products,
+      { title: "", image: "", price: 0, description: "" },
+    ]);
+  };
+
   return (
-    <div className="p-6 border rounded-lg bg-white shadow-lg">
-      <h2 className="text-2xl font-semibold mb-4">Edit Stream</h2>
+    <div className="dark min-h-screen bg-background p-6">
+      <Card className="max-w-5xl mx-auto border-none shadow-xl bg-background">
+        <CardHeader className="space-y-1">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-2xl font-bold flex items-center gap-2">
+              <Video className="h-6 w-6 text-primary" />
+              Edit Stream
+            </CardTitle>
+            <Badge
+              variant={isLive ? "default" : "outline"}
+              className={isLive ? "bg-green-500 hover:bg-green-600" : ""}
+            >
+              {isLive ? "LIVE" : "OFFLINE"}
+            </Badge>
+          </div>
+          <p className="text-muted-foreground">
+            Update your stream details before going live
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {error && (
+            <div className="bg-destructive/20 text-destructive p-3 rounded-md text-sm">
+              {error}
+            </div>
+          )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Title */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Title
-          </label>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="mt-1 p-2 border rounded w-full"
-          />
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Stream Title</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter a catchy title"
+                />
+              </div>
 
-        {/* Category */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Category
-          </label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="mt-1 p-2 border rounded w-full"
-          >
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-      {/* Description */}
-      <div className="mt-4">
-        <label className="block text-sm font-medium text-gray-700">
-          Description
-        </label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="mt-1 p-2 border rounded w-full min-h-[100px]"
-        />
-      </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe your stream"
+                  className="min-h-[120px] resize-none"
+                />
+              </div>
 
-      {/* Thumbnail Upload Section */}
-      <div className="mt-4">
-        <ThumbnailUpload
-          onUpload={setThumbnail}
-          error={error}
-          setError={setError}
-        />
-      </div>
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="live-mode"
+                  checked={isLive}
+                  onCheckedChange={setIsLive}
+                />
+                <Label htmlFor="live-mode" className="cursor-pointer">
+                  {isLive ? "Stream is live" : "Stream is offline"}
+                </Label>
+              </div>
+            </div>
 
-      {/* Product Upload Section */}
-      <div className="mt-4">
-        <h3 className="text-lg font-medium text-gray-700">Products</h3>
-        {products.map((product, index) => (
-          <ProductUpload
-            key={index}
-            product={product}
-            index={index}
-            onUpdate={handleProductUpdate}
-            error={error}
-            setError={setError}
-          />
-        ))}
-        <button
-          type="button"
-          onClick={() =>
-            setProducts([
-              ...products,
-              { title: "", image: "", price: 0, description: "" },
-            ])
-          }
-          className="mt-2 text-blue-500 hover:text-blue-700"
-        >
-          Add Product
-        </button>
-      </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Thumbnail</Label>
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <ThumbnailUpload
+                    onUpload={setThumbnail}
+                    error={error}
+                    setError={setError}
+                  />
+                </div>
+              </div>
 
-      {/* Stream Status */}
-      <div className="mt-4 flex items-center">
-        <label className="text-sm font-medium text-gray-700 mr-2">
-          Live Status:
-        </label>
-        <button
-          onClick={() => setIsLive(!isLive)}
-          className={`px-4 py-2 rounded ${
-            isLive ? "bg-green-500 text-white" : "bg-gray-400 text-white"
-          }`}
-        >
-          {isLive ? "Live" : "Offline"}
-        </button>
-      </div>
+              {thumbnail && (
+                <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
+                  <img
+                    src={thumbnail || "/placeholder.svg"}
+                    alt="Stream thumbnail"
+                    className="object-cover w-full h-full"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
 
-      {/* Submit Button */}
-      <button
-        onClick={handleUpdate}
-        disabled={loading}
-        className={`w-full mt-6 py-2 px-4 rounded ${
-          loading ? "bg-gray-300" : "bg-blue-500 hover:bg-blue-600 text-white"
-        }`}
-      >
-        {loading ? "Updating..." : "Update Stream"}
-      </button>
+          <Separator className="my-6" />
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium">Products</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addNewProduct}
+                className="flex items-center gap-1"
+              >
+                <PlusCircle className="h-4 w-4" />
+                Add Product
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              {products.map((product, index) => (
+                <Card key={index} className="bg-card/50">
+                  <CardContent className="pt-6">
+                    <ProductUpload
+                      product={product}
+                      index={index}
+                      onUpdate={handleProductUpdate}
+                      error={error}
+                      setError={setError}
+                    />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-4">
+            <Button
+              onClick={handleUpdate}
+              disabled={loading}
+              className="w-full"
+              size="lg"
+            >
+              {loading ? (
+                "Updating..."
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" /> Update Stream
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

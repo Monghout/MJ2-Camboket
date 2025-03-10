@@ -22,7 +22,16 @@ export async function GET() {
 export async function PUT(req: Request) {
   try {
     await connectDB(); // Ensure database connection
+
     const { clerkId, newRole } = await req.json();
+
+    // Validate request body
+    if (!clerkId || !newRole) {
+      return NextResponse.json(
+        { success: false, error: "clerkId and newRole are required" },
+        { status: 400 }
+      );
+    }
 
     // Update user role in MongoDB
     const updatedUser = await User.findOneAndUpdate(
@@ -38,7 +47,10 @@ export async function PUT(req: Request) {
       );
     }
 
-    // No direct WebSocket emission here anymore. We'll trigger it from the socket server.
+    // Log the updated user for debugging purposes (optional)
+    console.log("Updated user:", updatedUser);
+
+    // Return the updated user in the response
     return NextResponse.json(
       { success: true, user: updatedUser },
       { status: 200 }

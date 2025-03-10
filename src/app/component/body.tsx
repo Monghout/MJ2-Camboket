@@ -13,6 +13,7 @@ import Chat from "@/app/component/chat"; // Assuming the Chat component is corre
 import MuxPlayer from "@mux/mux-player-react";
 import CompareUserAndSellerIds from "./userCompare";
 import StreamIdDisplay from "./userCompare";
+import LiveStreamsPage from "./LiveStreamsPage";
 // import LiveStreamsPage from "./LiveStreamsPage";
 
 // import LivePage from './livePage';
@@ -62,7 +63,7 @@ export default function LandingPage() {
         <h1 className="text-2xl font-bold mb-6">Stream Information</h1>
         <StreamIdDisplay />
       </div>
-      {/* <LiveStreamsPage /> */}
+      <LiveStreamsPage />
     </div>
   );
 }

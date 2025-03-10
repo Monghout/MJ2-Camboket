@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +10,7 @@ interface Seller {
   name: string;
   email: string;
   role: string;
-  isOnline?: boolean; // We'll simulate this since it's not in your DB
+  isOnline?: boolean; // Ensure this field is included in your API response
 }
 
 export default function SellersPanel() {
@@ -28,10 +29,10 @@ export default function SellersPanel() {
             (user: Seller) => user.role === "seller"
           );
 
-          // Add random online status for visual effect
+          // Use the isOnline status from the API response
           const sellersWithStatus = sellerUsers.map((seller: Seller) => ({
             ...seller,
-            isOnline: Math.random() > 0.3,
+            isOnline: seller.isOnline || false, // Default to false if isOnline is undefined
           }));
 
           setSellers(sellersWithStatus);
@@ -73,7 +74,7 @@ export default function SellersPanel() {
                       />
                       <AvatarFallback>{seller.name[0]}</AvatarFallback>
                     </Avatar>
-                    {seller.isOnline && (
+                    {seller.isOnline && ( // Only show green dot if isOnline is true
                       <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-black" />
                     )}
                   </div>

@@ -1,18 +1,26 @@
 "use client";
 
 import { notFound } from "next/navigation";
-import MuxPlayer from "@mux/mux-player-react";
 import { useEffect, useState } from "react";
-import EditStreamForm from "@/app/component/editStreamForm"; // Import the edit form
+import { useUser } from "@clerk/nextjs";
+import EditStreamForm from "@/app/component/editStreamForm";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import StreamPlayer from "@/app/component/livePage/StreamPlayer";
+import StreamDetails from "@/app/component/livePage/StreamDetails";
+import SellerInfo from "@/app/component/livePage/SellerInfo";
+import FeaturedProducts from "@/app/component/livePage/FeaturedProducts";
 
 interface StreamPageProps {
   params: { id: string };
 }
 
 export default function StreamPage({ params }: StreamPageProps) {
+  const { user } = useUser();
   const [stream, setStream] = useState<any>(null);
   const [seller, setSeller] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const fetchStreamData = async () => {
@@ -33,59 +41,89 @@ export default function StreamPage({ params }: StreamPageProps) {
     fetchStreamData();
   }, [params.id]);
 
-  if (loading) return <p>Loading...</p>;
+  const handleRemoveProduct = async (productId: string) => {
+    try {
+      const response = await fetch(`/api/live/${params.id}/products`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId }),
+      });
+
+      if (!response.ok) throw new Error("Failed to remove product");
+
+      const updatedProducts = stream.products.filter(
+        (product: any) => product._id !== productId
+      );
+      setStream({ ...stream, products: updatedProducts });
+    } catch (error) {
+      console.error("Error removing product:", error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="dark bg-background min-h-screen p-4 md:p-8">
+        <div className="max-w-6xl mx-auto space-y-8">
+          <Skeleton className="w-full h-[400px] rounded-xl" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Skeleton className="h-[200px] rounded-xl col-span-2" />
+            <Skeleton className="h-[200px] rounded-xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!stream) return notFound();
 
+  const isSeller = user?.id === seller?.clerkId;
+  const isBuyer = user?.id !== seller?.clerkId;
+
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      {/* Mux Player */}
-      <div className="mb-8">
-        <MuxPlayer
-          playbackId={stream.playbackId}
-          streamType="live"
-          autoPlay
-          muted
-          className="w-full h-96 rounded-lg shadow-lg"
-        />
-      </div>
+    <div className="dark bg-background min-h-screen p-4 md:p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* Stream Player */}
+        <Card className="border-none shadow-xl overflow-hidden bg-black">
+          <StreamPlayer playbackId={stream.playbackId} isLive={stream.isLive} />
+        </Card>
 
-      {/* Stream Details */}
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h1 className="text-3xl font-bold mb-4">{stream.title}</h1>
-        <p className="text-gray-700 mb-4">{stream.description}</p>
+        {/* Stream Content */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="md:col-span-2 space-y-6">
+            <StreamDetails
+              title={stream.title}
+              description={stream.description}
+              category={stream.category}
+              createdAt={stream.createdAt}
+              products={stream.products}
+              isSeller={isSeller}
+              onRemoveProduct={handleRemoveProduct}
+            />
 
-        <div className="mb-6">
-          <h2 className="text-2xl font-semibold mb-2">Seller Information</h2>
-          <p>
-            <strong>Name:</strong> {seller?.name || "Unknown"}
-          </p>
-          <p>
-            <strong>Email:</strong> {seller?.email || "Unknown"}
-          </p>
-        </div>
-
-        {/* Products */}
-        {stream.products.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-2xl font-semibold mb-2">Products</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {stream.products.map((product: any, index: number) => (
-                <div key={index} className="bg-gray-50 p-4 rounded-lg">
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-32 object-cover rounded mb-2"
-                  />
-                  <p className="font-semibold">{product.name}</p>
-                  <p className="text-gray-600">${product.price}</p>
-                </div>
-              ))}
-            </div>
+            {/* Edit Stream Form (only for seller) */}
+            {isSeller && (
+              <div className="pt-4">
+                <EditStreamForm stream={stream} onUpdate={setStream} />
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Edit Stream Section */}
-        <EditStreamForm stream={stream} onUpdate={setStream} />
+          {/* Sidebar */}
+          <div className="space-y-6">
+            <SellerInfo
+              name={seller?.name}
+              email={seller?.email}
+              imageUrl={seller?.imageUrl}
+              followers={seller?.followers}
+              isBuyer={isBuyer}
+            />
+
+            {stream.products.length > 0 && (
+              <FeaturedProducts products={stream.products} />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

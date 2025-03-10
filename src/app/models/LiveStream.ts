@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { features } from "process";
 
 export interface ILiveStream extends Document {
   sellerId: string;
@@ -6,7 +7,13 @@ export interface ILiveStream extends Document {
   title: string;
   description: string;
   category: string;
-  products: { name: string; price: number; image: string }[];
+  products: {
+    name: string;
+    price: number;
+    image: string;
+    description: string;
+    feature: boolean;
+  }[];
   thumbnail: string | null;
   isLive: boolean;
   streamKey: string;
@@ -27,6 +34,7 @@ const LiveStreamSchema = new Schema<ILiveStream>(
         description: { type: String, required: true },
         price: { type: Number, required: true },
         image: { type: String, required: true },
+        feature: { type: Boolean, default: false },
       },
     ],
     thumbnail: { type: String, default: null },
