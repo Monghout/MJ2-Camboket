@@ -1,12 +1,11 @@
-// app/api/live/[id]/products/route.ts
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import LiveStream from "@/app/models/LiveStream"; // Ensure correct import path
 
-// DELETE method to remove a product from the stream
+// ✅ Correct DELETE function
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     await connectDB();
@@ -20,7 +19,7 @@ export async function DELETE(
       );
     }
 
-    const stream = await LiveStream.findById(params.id);
+    const stream = await LiveStream.findById(context.params.id);
     if (!stream) {
       return NextResponse.json({ error: "Stream not found" }, { status: 404 });
     }
