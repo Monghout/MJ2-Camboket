@@ -2,11 +2,16 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import LiveStream from "@/app/models/LiveStream";
 
-export async function POST(req: Request, context: { params: { id: string } }) {
+// Define the type for the context's params
+interface ContextParams {
+  id: string;
+}
+
+export async function POST(req: Request, context: { params: ContextParams }) {
   try {
     await connectDB();
 
-    const { id } = context.params; // Fix: Use context.params
+    const { id } = context.params; // Ensure we correctly access params
     const { followerId, followerName, action } = await req.json();
 
     const stream = await LiveStream.findById(id);
@@ -15,7 +20,7 @@ export async function POST(req: Request, context: { params: { id: string } }) {
     }
 
     if (!stream.followers) {
-      stream.followers = []; // Fix: Ensure followers array exists
+      stream.followers = []; // Ensure followers array exists
     }
 
     if (action === "follow") {
