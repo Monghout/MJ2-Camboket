@@ -7,11 +7,17 @@ import ProductUpload from "./ProductUpload";
 interface StreamFormProps {
   categories: string[];
   onSubmit: (data: {
-    sellerName: string; // Add sellerName
+    sellerName: string;
     category: string;
     streamTitle: string;
     streamDescription: string;
-    products: { title: string; image: string }[];
+    products: {
+      title: string;
+      image: string;
+      price: number;
+      description: string;
+      feature: boolean;
+    }[];
     thumbnailUrl: string | null;
   }) => void;
   error: string | null;
@@ -24,17 +30,26 @@ const StreamForm = ({
   error,
   setError,
 }: StreamFormProps) => {
-  const [sellerName, setSellerName] = useState(""); // Add sellerName state
+  const [sellerName, setSellerName] = useState("");
   const [category, setCategory] = useState("");
   const [streamTitle, setStreamTitle] = useState("");
   const [streamDescription, setStreamDescription] = useState("");
-  const [products, setProducts] = useState<{ title: string; image: string }[]>(
-    []
-  );
+  const [products, setProducts] = useState<
+    {
+      title: string;
+      image: string;
+      price: number;
+      description: string;
+      feature: boolean;
+    }[]
+  >([]);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
 
   const addProduct = () => {
-    setProducts((prev) => [...prev, { title: "", image: "" }]);
+    setProducts((prev) => [
+      ...prev,
+      { title: "", image: "", price: 0, description: "", feature: false },
+    ]);
   };
 
   const handleSubmit = () => {
@@ -44,7 +59,7 @@ const StreamForm = ({
     }
 
     onSubmit({
-      sellerName, // Pass sellerName
+      sellerName,
       category,
       streamTitle,
       streamDescription,

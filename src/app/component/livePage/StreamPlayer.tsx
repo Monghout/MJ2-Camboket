@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import MuxPlayer from "@mux/mux-player-react";
-import { Badge } from "@/components/ui/badge";
 
 interface StreamPlayerProps {
   playbackId: string;
@@ -13,39 +12,41 @@ export default function StreamPlayer({
   playbackId,
   isLive,
 }: StreamPlayerProps) {
-  const [isStreamActive, setIsStreamActive] = useState(false);
+  const [viewCount, setViewCount] = useState(0);
 
-  // Function to check stream status using Mux's Playback ID Status API
-  const checkStreamStatus = async () => {
+  // Function to fetch view counts
+  const fetchViewCounts = async () => {
     try {
       const response = await fetch(
-        `https://api.mux.com/video/v1/playback-ids/${playbackId}`,
+        `https://api.mux.com/data/v1/metrics/views?playback_id=${playbackId}`,
         {
           headers: {
             Authorization: `Basic ${Buffer.from(
-              `${process.env.MUX_TOKEN_ID}:${process.env.MUX_TOKEN_SECRET}`
+              `${process.env.MUX_DATA_TOKEN_ID}:${process.env.MUX_DATA_TOKEN_SECRET}`
             ).toString("base64")}`,
           },
         }
       );
 
       const data = await response.json();
+      console.log("API Response:", data); // Log the API response
 
-      // Check if the stream is active
-      if (data.data && data.data.status === "active") {
-        setIsStreamActive(true); // Stream is active
+      // Extract view count from the API response
+      if (data.data && data.data.length > 0) {
+        setViewCount(data.data[0].view_count);
       } else {
-        setIsStreamActive(false); // Stream is inactive
+        setViewCount(0); // Default to 0 if no data is found
       }
     } catch (error) {
-      console.error("Error fetching stream status:", error);
-      setIsStreamActive(false); // Assume stream is inactive if there's an error
+      console.error("Error fetching view counts:", error);
+      setViewCount(0); // Default to 0 if there's an error
     }
   };
 
-  // Poll the API every 5 seconds to check stream status
+  // Fetch view counts on component mount and poll every 10 seconds
   useEffect(() => {
-    const interval = setInterval(checkStreamStatus, 5000); // Check every 5 seconds
+    fetchViewCounts(); // Fetch immediately
+    const interval = setInterval(fetchViewCounts, 10000); // Fetch every 10 seconds
     return () => clearInterval(interval); // Cleanup interval on unmount
   }, [playbackId]);
 
@@ -59,12 +60,10 @@ export default function StreamPlayer({
         className="w-full aspect-video"
       />
 
-      {/* Show "Stream Offline" message only if the stream is not active */}
-
-      {/* Status badge */}
-      {/* <div className="absolute top-4 right-4">
-        <StatusBadge isLive={isLive} isOnline={false} />
-      </div> */}
+      {/* Display view count */}
+      <div className="absolute bottom-4 right-4 bg-black bg-opacity-75 p-2 rounded-lg text-white">
+        Views: {viewCount}
+      </div>
     </div>
   );
 }

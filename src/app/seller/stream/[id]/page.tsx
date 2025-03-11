@@ -3,24 +3,24 @@
 import { notFound, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
-import EditStreamForm from "@/app/component/editStreamForm";
-import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import StreamPlayer from "@/app/component/livePage/StreamPlayer";
+import LoadingSkeleton from "@/app/component/liveDisplay-Component/skeletonLoading";
+import StreamPlayerCard from "@/app/component/liveDisplay-Component/StreamPlayerCard";
 import StreamDetails from "@/app/component/livePage/StreamDetails";
+import EditStreamForm from "@/app/component/editStreamForm";
 import SellerInfo from "@/app/component/livePage/SellerInfo";
 import FeaturedProducts from "@/app/component/livePage/FeaturedProducts";
+import { Button } from "@/components/ui/button";
 
 export default function StreamPage() {
-  const { id } = useParams(); // Use useParams hook to access the dynamic id
+  const { id } = useParams();
   const { user } = useUser();
   const [stream, setStream] = useState<any>(null);
   const [seller, setSeller] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
 
   useEffect(() => {
-    if (!id) return; // Ensure `id` exists before fetching
+    if (!id) return;
 
     const fetchStreamData = async () => {
       setLoading(true);
@@ -30,6 +30,11 @@ export default function StreamPage() {
         const data = await response.json();
         setStream(data.stream);
         setSeller(data.seller);
+
+        // Check if user is already following
+        if (data.stream.followers.some((f: any) => f.followerId === user?.id)) {
+          setIsFollowing(true);
+        }
       } catch (error) {
         console.error(error);
       } finally {
@@ -38,39 +43,34 @@ export default function StreamPage() {
     };
 
     fetchStreamData();
-  }, [id]); // Listen for `id` changes
+  }, [id, user?.id]);
 
-  const handleRemoveProduct = async (productId: string) => {
+  const handleFollow = async () => {
+    if (!user) return;
+
     try {
-      const response = await fetch(`/api/live/${id}/products`, {
-        method: "DELETE",
+      const response = await fetch(`/api/live/${id}/follow`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId }),
+        body: JSON.stringify({
+          followerId: user.id,
+          followerName: user.fullName,
+          action: isFollowing ? "unfollow" : "follow",
+        }),
       });
 
-      if (!response.ok) throw new Error("Failed to remove product");
+      if (!response.ok) throw new Error("Failed to update follow status");
 
-      const updatedProducts = stream.products.filter(
-        (product: any) => product._id !== productId
-      );
-      setStream({ ...stream, products: updatedProducts });
+      const updatedStream = await response.json();
+      setStream(updatedStream);
+      setIsFollowing(!isFollowing);
     } catch (error) {
-      console.error("Error removing product:", error);
+      console.error("Error following/unfollowing:", error);
     }
   };
 
   if (loading) {
-    return (
-      <div className="dark bg-background min-h-screen p-4 md:p-8">
-        <div className="max-w-6xl mx-auto space-y-8">
-          <Skeleton className="w-full h-[400px] rounded-xl" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Skeleton className="h-[200px] rounded-xl col-span-2" />
-            <Skeleton className="h-[200px] rounded-xl" />
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingSkeleton />;
   }
 
   if (!stream) return notFound();
@@ -80,48 +80,55 @@ export default function StreamPage() {
 
   return (
     <div className="dark bg-background min-h-screen p-4 md:p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Stream Player */}
-        <Card className="border-none shadow-xl overflow-hidden bg-black">
-          <StreamPlayer playbackId={stream.playbackId} isLive={false} />
-        </Card>
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6">
+        {/* Left Column (Stream Player and Details) */}
+        <div className="flex-1 space-y-6">
+          {/* Stream Player */}
+          <StreamPlayerCard playbackId={stream.playbackId} isLive={false} />
 
-        {/* Stream Content */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="md:col-span-2 space-y-6">
-            <StreamDetails
-              title={stream.title}
-              description={stream.description}
-              category={stream.category}
-              createdAt={stream.createdAt}
-              products={stream.products}
-              isSeller={isSeller}
-              onRemoveProduct={handleRemoveProduct}
-            />
+          {/* Stream Details */}
+          <StreamDetails
+            title={stream.title}
+            description={stream.description}
+            category={stream.category}
+            createdAt={stream.createdAt}
+            products={stream.products}
+            isSeller={isSeller}
+            onRemoveProduct={function (productId: string): void {
+              throw new Error("Function not implemented.");
+            }}
+          />
 
-            {/* Edit Stream Form (only for seller) */}
-            {isSeller && (
-              <div className="pt-4">
-                <EditStreamForm stream={stream} onUpdate={setStream} />
-              </div>
-            )}
-          </div>
+          {/* Edit Stream Form (only for seller) */}
+          {isSeller && (
+            <div className="pt-4">
+              <EditStreamForm stream={stream} onUpdate={setStream} />
+            </div>
+          )}
+        </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            <SellerInfo
-              name={seller?.name}
-              email={seller?.email}
-              imageUrl={seller?.imageUrl}
-              followers={seller?.followers}
-              isBuyer={isBuyer}
-            />
+        {/* Right Column (Featured Products and Seller Info) */}
+        <div className="w-full md:w-1/4 space-y-6">
+          {/* Seller Info */}
+          <SellerInfo
+            name={seller?.name}
+            email={seller?.email}
+            imageUrl={seller?.imageUrl}
+            followers={stream.followers}
+            isBuyer={isBuyer}
+          />
 
-            {stream.products.length > 0 && (
-              <FeaturedProducts products={stream.products} />
-            )}
-          </div>
+          {/* Follow Button */}
+          {isBuyer && (
+            <Button onClick={handleFollow} className="w-full">
+              {isFollowing ? "Unfollow" : "Follow"}
+            </Button>
+          )}
+
+          {/* Featured Products */}
+          {stream.products.length > 0 && (
+            <FeaturedProducts products={stream.products} />
+          )}
         </div>
       </div>
     </div>

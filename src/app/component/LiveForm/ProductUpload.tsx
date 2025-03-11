@@ -16,6 +16,7 @@ interface ProductUploadProps {
     image: string;
     price: number;
     description: string;
+    feature: boolean; // Added 'feature' to the product object
   };
   index: number;
   onUpdate: (
@@ -25,6 +26,7 @@ interface ProductUploadProps {
       image: string;
       price: number;
       description: string;
+      feature: boolean; // Ensure 'feature' is passed in on update
     }
   ) => void;
   error: string | null;
@@ -103,6 +105,11 @@ export default function ProductUpload({
         onUpdate(index, { ...product, price: numericValue });
       }
     }
+  };
+
+  const handleFeatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isChecked = e.target.checked;
+    onUpdate(index, { ...product, feature: isChecked });
   };
 
   return (
@@ -229,6 +236,26 @@ export default function ProductUpload({
             )}
           </div>
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label
+          htmlFor={`product-feature-${index}`}
+          className="flex items-center gap-1"
+        >
+          <Tag className="h-3.5 w-3.5" />
+          Feature Product
+        </Label>
+        <input
+          type="checkbox"
+          id={`product-feature-${index}`}
+          checked={product.feature}
+          onChange={handleFeatureChange}
+          className="h-4 w-4"
+        />
+        <span className="ml-2 text-sm text-muted-foreground">
+          Mark this product as featured
+        </span>
       </div>
     </div>
   );

@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/clerk-react"; // Import Clerk's useUser hook
 
 export default function GoLiveButton() {
+  const { user: clerkUser } = useUser(); // Get the logged-in Clerk user
   const router = useRouter();
   const [userStreamId, setUserStreamId] = useState<string | null>(null); // Store the user's stream ID
   const [streamIds, setStreamIds] = useState<string[]>([]); // Store all stream IDs
@@ -15,26 +17,32 @@ export default function GoLiveButton() {
       try {
         setLoading(true);
 
-        // Fetch the user
+        if (!clerkUser) {
+          throw new Error("User is not logged in.");
+        }
+
+        // Fetch all users from /api/user endpoint
         const userRes = await fetch("/api/user");
         const userData = await userRes.json();
 
-        if (
-          !userData.success ||
-          !userData.users ||
-          userData.users.length === 0
-        ) {
+        if (!userRes.ok || !userData.success || userData.users.length === 0) {
           console.error("❌ No user data found");
           return;
         }
 
-        // Extract the first user (since users is an array)
-        const user = userData.users[0];
+        // Find the logged-in user by matching clerkId
+        const loggedInUser = userData.users.find(
+          (user: any) => user.clerkId === clerkUser.id
+        );
+
+        if (!loggedInUser) {
+          throw new Error("Logged-in user not found.");
+        }
 
         // Set the user's stream ID
-        setUserStreamId(user.stream || null);
+        setUserStreamId(loggedInUser.stream || null);
 
-        // Fetch all streams
+        // Fetch all livestreams
         const response = await fetch("/api/livestreams");
 
         if (!response.ok) {
@@ -60,7 +68,7 @@ export default function GoLiveButton() {
     };
 
     fetchData();
-  }, []);
+  }, [clerkUser]); // Add clerkUser dependency to rerun effect when the logged-in user changes
 
   const handleGoLive = () => {
     if (userStreamId && streamIds.includes(userStreamId)) {

@@ -33,6 +33,7 @@ interface EditStreamFormProps {
       image: string;
       price: number;
       description: string;
+      feature: boolean;
     }[];
     thumbnail: string | null;
     isLive: boolean;
@@ -77,6 +78,7 @@ export default function EditStreamForm({
       image: string;
       price: number;
       description: string;
+      feature: boolean;
     }
   ) => {
     const updatedProducts = [...products];
@@ -116,7 +118,7 @@ export default function EditStreamForm({
   const addNewProduct = () => {
     setProducts([
       ...products,
-      { title: "", image: "", price: 0, description: "" },
+      { title: "", image: "", price: 0, description: "", feature: false },
     ]);
   };
 
