@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, Filter } from "lucide-react";
 import UserList from "./userlist";
-import Chat from "@/app/component/chat"; // Assuming the Chat component is correctly imported
 // import LiveStreamPage from "../livestream/[id]/page";
 import MuxPlayer from "@mux/mux-player-react";
 import CompareUserAndSellerIds from "./userCompare";

@@ -5,15 +5,18 @@ import LiveStream from "@/app/models/LiveStream"; // Adjust based on your projec
 const MUX_TOKEN_ID = process.env.MUX_TOKEN_ID;
 const MUX_TOKEN_SECRET = process.env.MUX_TOKEN_SECRET;
 
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+interface Context {
+  params: Promise<{ id: string }>; // Ensure params are treated as a Promise
+}
+
+export async function GET(req: Request, context: Context) {
   try {
-    console.log("Checking stream status for ID:", params.id);
+    const { id } = await context.params; // Await params here
+
+    console.log("Checking stream status for ID:", id);
 
     // Fetch the stream from the database
-    const stream = await LiveStream.findById(params.id);
+    const stream = await LiveStream.findById(id);
     if (!stream) {
       return NextResponse.json({ error: "Stream not found" }, { status: 404 });
     }

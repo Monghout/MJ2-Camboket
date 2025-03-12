@@ -4,8 +4,9 @@ import LiveStream from "@/app/models/LiveStream"; // Ensure correct import path
 import User from "@/app/models/User"; // Import User model
 import mongoose from "mongoose"; // Import mongoose for ObjectId validation
 
+// Define context with params as Promise
 interface Context {
-  params: { id: string };
+  params: Promise<{ id: string }>; // params should be a Promise
 }
 
 // GET method to fetch the stream and seller info

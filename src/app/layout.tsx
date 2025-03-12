@@ -10,6 +10,7 @@ import {
   UserButton,
 } from "@clerk/nextjs";
 import { EdgeStoreProvider } from "../lib/edgestore";
+import { Toaster } from "sonner";
 
 // import OnlineStatusTracker from "@/isOnlineTracker";
 const geistSans = Geist({
@@ -38,7 +39,9 @@ export default function RootLayout({
         <body>
           <EdgeStoreProvider>
             <SignedOut> {children}</SignedOut>
+            <Toaster position="top-center" />
             <SignedIn> {children}</SignedIn>
+            <Toaster position="top-center" />
           </EdgeStoreProvider>
         </body>
       </html>

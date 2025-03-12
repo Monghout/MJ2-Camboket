@@ -10,6 +10,10 @@ import EditStreamForm from "@/app/component/editStreamForm";
 import SellerInfo from "@/app/component/livePage/SellerInfo";
 import FeaturedProducts from "@/app/component/livePage/FeaturedProducts";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Copy } from "lucide-react"; // Import the Copy icon
+import { toast } from "sonner"; // Import toast for notifications
 
 export default function StreamPage() {
   const { id } = useParams();
@@ -18,6 +22,7 @@ export default function StreamPage() {
   const [seller, setSeller] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isCopyDisabled, setIsCopyDisabled] = useState(false); // State to disable the button
 
   useEffect(() => {
     if (!id) return;
@@ -69,6 +74,25 @@ export default function StreamPage() {
     }
   };
 
+  // Handle copying the stream key to the clipboard
+  const handleCopyStreamKey = async () => {
+    if (isCopyDisabled) return; // Prevent multiple clicks
+
+    try {
+      await navigator.clipboard.writeText(stream.streamKey);
+      toast.success("Copied!"); // Show "Copied!" toast
+      setIsCopyDisabled(true); // Disable the button
+
+      // Re-enable the button after 2 seconds
+      setTimeout(() => {
+        setIsCopyDisabled(false);
+      }, 2000);
+    } catch (error) {
+      console.error("Failed to copy stream key:", error);
+      toast.error("Failed to copy stream key."); // Show error toast
+    }
+  };
+
   if (loading) {
     return <LoadingSkeleton />;
   }
@@ -98,6 +122,32 @@ export default function StreamPage() {
               throw new Error("Function not implemented.");
             }}
           />
+
+          {/* Display Stream Key (only for seller) */}
+          {isSeller && (
+            <div className="space-y-2">
+              <Label>Stream Key</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={stream.streamKey}
+                  readOnly
+                  className="bg-muted/50 flex-1"
+                />
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={handleCopyStreamKey}
+                  disabled={isCopyDisabled} // Disable the button during cooldown
+                  aria-label="Copy stream key"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Use this key to configure your streaming software (e.g., OBS).
+              </p>
+            </div>
+          )}
 
           {/* Edit Stream Form (only for seller) */}
           {isSeller && (
