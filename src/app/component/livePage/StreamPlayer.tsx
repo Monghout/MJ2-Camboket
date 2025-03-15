@@ -5,11 +5,13 @@ import MuxPlayer from "@mux/mux-player-react";
 
 interface StreamPlayerProps {
   playbackId: string;
+  liveStreamId: string;
   isLive: boolean;
 }
 
 export default function StreamPlayer({
   playbackId,
+  liveStreamId,
   isLive,
 }: StreamPlayerProps) {
   const [viewCount, setViewCount] = useState(0);
@@ -19,7 +21,7 @@ export default function StreamPlayer({
   const fetchViewCounts = async () => {
     try {
       const response = await fetch(
-        `https://api.mux.com/data/v1/metrics/views?playback_id=${playbackId}`,
+        `https://api.mux.com/video/v1/live-streams/${liveStreamId}`,
         {
           headers: {
             Authorization: `Basic ${Buffer.from(
@@ -49,7 +51,7 @@ export default function StreamPlayer({
     fetchViewCounts(); // Fetch immediately
     const interval = setInterval(fetchViewCounts, 10000); // Fetch every 10 seconds
     return () => clearInterval(interval); // Cleanup interval on unmount
-  }, [playbackId]);
+  }, [liveStreamId]);
 
   // Ensure the player starts correctly when live or on-demand
   useEffect(() => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { notFound, useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useUser } from "@clerk/nextjs";
 import LoadingSkeleton from "@/app/component/liveDisplay-Component/skeletonLoading";
 import StreamPlayerCard from "@/app/component/liveDisplay-Component/StreamPlayerCard";
@@ -23,32 +23,94 @@ export default function StreamPage() {
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isCopyDisabled, setIsCopyDisabled] = useState(false);
+  const [muxStreams, setMuxStreams] = useState<any[]>([]);
+  const [playerKey, setPlayerKey] = useState(0);
+  const intervalRefs = useRef<{
+    status: NodeJS.Timeout | null;
+    player: NodeJS.Timeout | null;
+  }>({
+    status: null,
+    player: null,
+  });
 
-  useEffect(() => {
-    if (!id) return;
-
-    const fetchStreamData = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/live/${id}`); // Fetch stream data
-        if (!response.ok) throw new Error("Stream not found");
+  // Combined fetch functions
+  const fetchData = async () => {
+    // Fetch Mux streams
+    try {
+      const response = await fetch("/api/mux");
+      if (response.ok) {
         const data = await response.json();
-        setStream(data.stream);
-        setSeller(data.seller);
+        setMuxStreams(data.liveStreams);
 
-        if (data.stream.followers.some((f: any) => f.followerId === user?.id)) {
-          setIsFollowing(true);
+        // Check if we need to refresh the player
+        if (stream?.liveStreamId) {
+          const matchedStream = data.liveStreams.find(
+            (ms: any) => ms.id === stream.liveStreamId
+          );
+          if (matchedStream?.status === "active") {
+            // If active and player refresh not set up, set it up
+            if (!intervalRefs.current.player) {
+              intervalRefs.current.player = setInterval(
+                () => setPlayerKey((k) => k + 1),
+                2000
+              );
+            }
+          } else if (intervalRefs.current.player) {
+            // If not active but interval exists, clear it
+            clearInterval(intervalRefs.current.player);
+            intervalRefs.current.player = null;
+          }
         }
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching Mux streams:", error);
+    }
 
-    fetchStreamData();
+    // Fetch stream data if needed
+    if (!stream && id && !loading) {
+      fetchStreamData();
+    }
+  };
+
+  const fetchStreamData = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/live/${id}`);
+      if (!response.ok) throw new Error("Stream not found");
+      const data = await response.json();
+      setStream(data.stream);
+      setSeller(data.seller);
+      if (data.stream.followers.some((f: any) => f.followerId === user?.id)) {
+        setIsFollowing(true);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Combined useEffect for all intervals
+  useEffect(() => {
+    // Initial fetch
+    fetchData();
+
+    // Set up status refresh interval
+    intervalRefs.current.status = setInterval(fetchData, 2000);
+
+    // Initial stream data fetch
+    if (id) fetchStreamData();
+
+    // Cleanup all intervals on unmount
+    return () => {
+      if (intervalRefs.current.status)
+        clearInterval(intervalRefs.current.status);
+      if (intervalRefs.current.player)
+        clearInterval(intervalRefs.current.player);
+    };
   }, [id, user?.id]);
 
+  // Handle follow/unfollow
   const handleFollow = async () => {
     if (!user) {
       toast.error("You need to log in to follow");
@@ -67,7 +129,6 @@ export default function StreamPage() {
       });
 
       if (!response.ok) throw new Error("Failed to update follow status");
-
       const updatedStream = await response.json();
       setStream(updatedStream);
       setIsFollowing(!isFollowing);
@@ -76,23 +137,21 @@ export default function StreamPage() {
     }
   };
 
+  // Copy stream key
   const handleCopyStreamKey = async () => {
     if (isCopyDisabled) return;
-
     try {
       await navigator.clipboard.writeText(stream.streamKey);
       toast.success("Copied!");
       setIsCopyDisabled(true);
-
-      setTimeout(() => {
-        setIsCopyDisabled(false);
-      }, 2000);
+      setTimeout(() => setIsCopyDisabled(false), 2000);
     } catch (error) {
       console.error("Failed to copy stream key:", error);
       toast.error("Failed to copy stream key.");
     }
   };
 
+  // Remove product
   const handleRemoveProduct = async (productId: string) => {
     if (!user) {
       toast.error("You need to log in to remove products");
@@ -108,16 +167,12 @@ export default function StreamPage() {
 
       if (!response.ok) throw new Error("Failed to remove product");
 
-      const updatedStream = await response.json();
-
-      // Use a callback to safely update the state
       setStream((prevStream: { products: any[] }) => ({
         ...prevStream,
         products: prevStream.products.filter(
           (product: any) => product._id !== productId
         ),
       }));
-
       toast.success("Product removed successfully");
     } catch (error) {
       console.error("Error removing product:", error);
@@ -125,21 +180,34 @@ export default function StreamPage() {
     }
   };
 
-  if (loading) {
-    return <LoadingSkeleton />;
-  }
-
+  if (loading) return <LoadingSkeleton />;
   if (!stream) return notFound();
 
   const isSeller = user?.id === seller?.clerkId;
   const isBuyer = user?.id !== seller?.clerkId;
+  const matchedStream = muxStreams.find(
+    (muxStream) => muxStream.id === stream.liveStreamId
+  );
+  const isLive = matchedStream?.status === "active";
 
   return (
     <div className="dark bg-background min-h-screen p-4 md:p-8">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6">
         <div className="flex-1 space-y-6">
-          <StreamPlayerCard playbackId={stream.playbackId} isLive={false} />
-
+          <StreamPlayerCard
+            key={playerKey}
+            playbackId={stream.playbackId}
+            isLive={isLive}
+            liveStreamId={stream}
+          />
+          {matchedStream && (
+            <div className="mt-4">
+              <p className="text-sm text-muted-foreground">
+                Status:{" "}
+                <span className="font-medium">{matchedStream.status}</span>
+              </p>
+            </div>
+          )}
           <StreamDetails
             title={stream.title}
             description={stream.description}
