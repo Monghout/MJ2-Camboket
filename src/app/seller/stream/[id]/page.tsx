@@ -50,7 +50,10 @@ export default function StreamPage() {
   }, [id, user?.id]);
 
   const handleFollow = async () => {
-    if (!user) return;
+    if (!user) {
+      toast.error("You need to log in to follow");
+      return;
+    }
 
     try {
       const response = await fetch(`/api/live/${id}/follow`, {
@@ -91,6 +94,11 @@ export default function StreamPage() {
   };
 
   const handleRemoveProduct = async (productId: string) => {
+    if (!user) {
+      toast.error("You need to log in to remove products");
+      return;
+    }
+
     try {
       const response = await fetch(`/api/live/${id}/products`, {
         method: "DELETE",
@@ -193,7 +201,7 @@ export default function StreamPage() {
             isBuyer={isBuyer}
           />
 
-          {isBuyer && (
+          {isBuyer && user && (
             <Button onClick={handleFollow} className="w-full">
               {isFollowing ? "Unfollow" : "Follow"}
             </Button>
