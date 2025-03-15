@@ -53,9 +53,6 @@ export default function SellerInfo({
                 <p className="text-sm text-muted-foreground">
                   Followers: {followers || "0"}
                 </p>
-                <Button variant="outline" className="mt-2">
-                  Follow
-                </Button>
               </div>
             )}
           </div>

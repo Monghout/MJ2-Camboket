@@ -25,6 +25,7 @@ export default function Header() {
 
         {/* Right Side - User Button */}
         <div className="flex items-center gap-4">
+          {" "}
           <CheckoutButton />
           {user ? (
             <UserButton afterSignOutUrl="/" />

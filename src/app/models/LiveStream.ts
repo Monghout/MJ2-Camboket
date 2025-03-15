@@ -16,8 +16,9 @@ export interface ILiveStream extends Document {
   thumbnail: string | null;
   isLive: boolean;
   streamKey: string;
+  muxStreamId: String;
   playbackId: string;
-  followers: { followerId: string; followerName: string }[]; // Array of followers
+  followers: { followerId: string; followerName: string; action: String }[]; // Array of followers
   followerCount: number; // Counter for followers
   createdAt: Date;
   updatedAt: Date;
@@ -43,15 +44,17 @@ const LiveStreamSchema = new Schema<ILiveStream>(
     isLive: { type: Boolean, default: true },
     streamKey: { type: String, required: true, unique: true },
     playbackId: { type: String, required: true, unique: true },
+    muxStreamId: { type: String, required: true }, // Store the Mux Stream ID
     followers: [
       {
-        followerId: { type: String, required: true }, // Follower's ID
-        followerName: { type: String, required: true }, // Follower's name
+        followerId: { type: String, required: true },
+        followerName: { type: String, required: true },
+        action: { type: String, required: true },
       },
     ],
-    followerCount: { type: Number, default: 0 }, // Follower counter
+    followerCount: { type: Number, default: 0 },
   },
-  { timestamps: true } // Automatically adds createdAt and updatedAt fields
+  { timestamps: true }
 );
 
 const LiveStream =

@@ -57,19 +57,17 @@ export async function GET(req: Request) {
         new_asset_settings: { playback_policy: ["public"] },
       });
 
-      // Get the stream key and playback ID
+      // Get the stream key, playback ID, and the livestream ID from Mux
       const streamKey = stream.stream_key;
       const playbackId = stream.playback_ids?.[0]?.id;
+      const liveStreamId = stream.id; // Mux livestream ID
 
-      if (!playbackId || !streamKey) {
+      if (!playbackId || !streamKey || !liveStreamId) {
         console.error("Failed to generate Mux stream credentials");
         await client.close();
 
         // Set flash message cookie for error
-        (
-          await // Set flash message cookie for error
-          cookies()
-        ).set(
+        (await cookies()).set(
           "flash_message",
           JSON.stringify({
             type: "error",
@@ -95,6 +93,9 @@ export async function GET(req: Request) {
         isLive: false,
         streamKey,
         playbackId,
+        liveStreamId, // Include the Mux live stream ID here
+        followers: [], // Initialize the followers array as empty
+        followerCount: 0, // Initialize the follower count to 0
         createdAt: new Date(),
       };
 
@@ -117,10 +118,7 @@ export async function GET(req: Request) {
     await client.close();
 
     // Set flash message cookie for success
-    (
-      await // Set flash message cookie for success
-      cookies()
-    ).set(
+    (await cookies()).set(
       "flash_message",
       JSON.stringify({
         type: "success",
@@ -135,10 +133,7 @@ export async function GET(req: Request) {
     console.error("Error updating user and creating livestream:", error);
 
     // Set flash message cookie for error
-    (
-      await // Set flash message cookie for error
-      cookies()
-    ).set(
+    (await cookies()).set(
       "flash_message",
       JSON.stringify({
         type: "error",

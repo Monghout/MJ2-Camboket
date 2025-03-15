@@ -13,8 +13,9 @@ export default function StreamPlayer({
   isLive,
 }: StreamPlayerProps) {
   const [viewCount, setViewCount] = useState(0);
+  const [isStreamActive, setIsStreamActive] = useState(false); // Track stream activity
 
-  // Function to fetch view counts
+  // Function to fetch view counts from Mux API
   const fetchViewCounts = async () => {
     try {
       const response = await fetch(
@@ -22,7 +23,7 @@ export default function StreamPlayer({
         {
           headers: {
             Authorization: `Basic ${Buffer.from(
-              `${process.env.MUX_DATA_TOKEN_ID}:${process.env.MUX_DATA_TOKEN_SECRET}`
+              `${process.env.MUX_TOKEN_ID}:${process.env.MUX_TOKEN_SECRET}`
             ).toString("base64")}`,
           },
         }
@@ -50,19 +51,58 @@ export default function StreamPlayer({
     return () => clearInterval(interval); // Cleanup interval on unmount
   }, [playbackId]);
 
+  // Ensure the player starts correctly when live or on-demand
+  useEffect(() => {
+    const checkStreamStatus = async () => {
+      if (isLive) {
+        setIsStreamActive(true); // Stream should be active when it's live
+      } else {
+        setIsStreamActive(false); // Stream should be inactive if not live
+      }
+    };
+
+    checkStreamStatus();
+  }, [isLive]);
+
+  // Handle Mux player events to detect stream activity
+  const handlePlayerEvent = (event: any) => {
+    switch (event.type) {
+      case "play":
+      case "playing":
+        setIsStreamActive(true); // Stream is active
+        break;
+      case "pause":
+      case "ended":
+      case "error":
+        setIsStreamActive(false); // Stream is inactive
+        break;
+      default:
+        break;
+    }
+  };
+
   return (
     <div className="relative">
       <MuxPlayer
         playbackId={playbackId}
-        streamType="live"
+        streamType={isLive ? "live" : "on-demand"}
         autoPlay
-        muted
-        className="w-full aspect-video"
+        muted={true} // Ensure muted for autoplay to work in most browsers
+        onPlay={() => setIsStreamActive(true)} // Detect when playback starts
+        onPlaying={() => setIsStreamActive(true)} // Detect when playback is ongoing
+        onPause={() => setIsStreamActive(false)} // Detect when playback is paused
+        onEnded={() => setIsStreamActive(false)} // Detect when playback ends
+        onError={() => setIsStreamActive(false)} // Detect playback errors
       />
 
       {/* Display view count */}
       <div className="absolute bottom-4 right-4 bg-black bg-opacity-75 p-2 rounded-lg text-white">
         Views: {viewCount}
+      </div>
+
+      {/* Display stream status */}
+      <div className="absolute top-4 right-4 bg-black bg-opacity-75 p-2 rounded-lg text-white">
+        {isStreamActive ? "🔴 Live" : "⏸️ Paused/Ended"}
       </div>
     </div>
   );

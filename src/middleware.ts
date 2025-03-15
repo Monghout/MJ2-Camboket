@@ -1,25 +1,27 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
+// Define public routes (accessible without authentication)
 const isPublicRoute = createRouteMatcher([
-  "/",
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/api/webhooks/clerk",
+  "/", // Homepage is public
+  "/sign-in(.*)", // Allow sign-in pages
+  "/sign-up(.*)", // Allow sign-up pages
+  "/api/webhooks/clerk", // Allow Clerk webhooks to work without auth
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
-  if (isPublicRoute(req)) {
-    return;
-  }
-
-  // ✅ Await `auth()` before accessing `userId`
-  const { userId } = await auth();
-
-  if (!userId) {
-    return new Response("Unauthorized", { status: 401 });
+export default clerkMiddleware(async (auth, request) => {
+  // Check if the route is not public
+  if (!isPublicRoute(request)) {
+    if (request.url.startsWith("/api")) {
+      // Redirect all /api requests (except /api/webhooks/clerk) to homepage
+      return Response.redirect("/", 302);
+    }
+    await auth.protect(); // Protect other routes (not /api)
   }
 });
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)", "/api/(.*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico).*)", // Apply Clerk auth globally except for assets
+    "/api/(.*)", // Ensure all API routes run through middleware
+  ],
 };
