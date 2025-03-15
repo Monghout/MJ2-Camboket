@@ -7,7 +7,7 @@ import { User } from "lucide-react";
 interface SellerInfoProps {
   name: string;
   email: string;
-  imageUrl: string;
+  photo: string;
   followers: number;
   isBuyer: boolean;
 }
@@ -15,7 +15,7 @@ interface SellerInfoProps {
 export default function SellerInfo({
   name,
   email,
-  imageUrl,
+  photo,
   followers,
   isBuyer,
 }: SellerInfoProps) {
@@ -40,7 +40,7 @@ export default function SellerInfo({
       <CardContent className="space-y-4">
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12">
-            <AvatarImage src={imageUrl} alt={name} />
+            <AvatarImage src={photo} alt={name} />
             <AvatarFallback>{getInitials(name)}</AvatarFallback>
           </Avatar>
           <div>

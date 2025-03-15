@@ -12,7 +12,7 @@ import FeaturedProducts from "@/app/component/livePage/FeaturedProducts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy } from "lucide-react";
+import { Copy, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 
 export default function StreamPage() {
@@ -194,20 +194,42 @@ export default function StreamPage() {
     <div className="dark bg-background min-h-screen p-4 md:p-8">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6">
         <div className="flex-1 space-y-6">
-          <StreamPlayerCard
-            key={playerKey}
-            playbackId={stream.playbackId}
-            isLive={isLive}
-            liveStreamId={stream}
-          />
+          {/* Player container with relative positioning */}
+          <div className="relative">
+            <StreamPlayerCard
+              key={playerKey}
+              playbackId={stream.playbackId}
+              isLive={isLive}
+              liveStreamId={stream}
+            />
+
+            {/* Black overlay when stream is offline */}
+            {!isLive && (
+              <div className="absolute inset-0 bg-black flex flex-col items-center justify-center text-white">
+                <WifiOff className="h-12 w-12 mb-2 text-red-500" />
+                <h3 className="text-xl font-semibold">Stream Offline</h3>
+                <p className="text-sm text-gray-400 mt-2">
+                  The broadcaster is currently offline
+                </p>
+              </div>
+            )}
+          </div>
+
           {matchedStream && (
             <div className="mt-4">
               <p className="text-sm text-muted-foreground">
                 Status:{" "}
-                <span className="font-medium">{matchedStream.status}</span>
+                <span
+                  className={`font-medium ${
+                    isLive ? "text-green-500" : "text-red-500"
+                  }`}
+                >
+                  {matchedStream.status}
+                </span>
               </p>
             </div>
           )}
+
           <StreamDetails
             title={stream.title}
             description={stream.description}
@@ -240,16 +262,6 @@ export default function StreamPage() {
               <p className="text-sm text-muted-foreground">
                 Use this key to configure your streaming software (e.g., OBS).
               </p>
-              <div className="space-y-2">
-                <Label>Stream Id</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={stream.liveStreamId}
-                    readOnly
-                    className="bg-muted/50 flex-1"
-                  />
-                </div>
-              </div>
             </div>
           )}
 
@@ -264,7 +276,7 @@ export default function StreamPage() {
           <SellerInfo
             name={seller?.name}
             email={seller?.email}
-            imageUrl={seller?.imageUrl}
+            photo={seller?.photo}
             followers={stream.followers}
             isBuyer={isBuyer}
           />

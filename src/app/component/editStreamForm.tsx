@@ -14,8 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { PlusCircle, Save, Video } from "lucide-react";
@@ -131,12 +130,6 @@ export default function EditStreamForm({
               <Video className="h-6 w-6 text-primary" />
               Edit Stream
             </CardTitle>
-            <Badge
-              variant={isLive ? "default" : "outline"}
-              className={isLive ? "bg-green-500 hover:bg-green-600" : ""}
-            >
-              {isLive ? "LIVE" : "OFFLINE"}
-            </Badge>
           </div>
           <p className="text-muted-foreground">
             Update your stream details before going live
@@ -186,17 +179,6 @@ export default function EditStreamForm({
                   placeholder="Describe your stream"
                   className="min-h-[120px] resize-none"
                 />
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="live-mode"
-                  checked={isLive}
-                  onCheckedChange={setIsLive}
-                />
-                <Label htmlFor="live-mode" className="cursor-pointer">
-                  {isLive ? "Stream is live" : "Stream is offline"}
-                </Label>
               </div>
             </div>
 

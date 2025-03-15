@@ -1,25 +1,51 @@
 import { NextResponse } from "next/server";
-import LiveStream from "@/app/models/LiveStream"; // Adjust this to your DB model
+import { connectDB } from "@/lib/mongodb";
+import LiveStream from "@/app/models/LiveStream";
+import mongoose from "mongoose";
 
-// Define context with params as a Promise
-interface Context {
-  params: Promise<{ id: string }>; // Ensure params are treated as a Promise
-}
-
-export async function GET(req: Request, context: Context) {
+export async function PUT(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
   try {
-    // Await the params object properly
-    const { id } = await context.params; // Await the params here
+    await connectDB();
 
-    // Fetch the stream from the database
-    const stream = await LiveStream.findById(id);
-    if (!stream) {
-      return NextResponse.json({ isLive: false }, { status: 404 });
+    const { id } = params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid stream ID" }, { status: 400 });
     }
 
-    return NextResponse.json({ isLive: stream.status === "live" });
+    const body = await req.json();
+    const { status } = body;
+
+    if (!status) {
+      return NextResponse.json(
+        { error: "Status is required" },
+        { status: 400 }
+      );
+    }
+
+    const isLive = status === "active";
+
+    const updatedStream = await LiveStream.findByIdAndUpdate(
+      id,
+      { isLive },
+      { new: true }
+    );
+
+    if (!updatedStream) {
+      return NextResponse.json({ error: "Stream not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      message: "Stream status updated",
+      stream: updatedStream,
+    });
   } catch (error) {
-    console.error("Error fetching stream status:", error);
-    return NextResponse.json({ isLive: false }, { status: 500 });
+    console.error("Database error:", error);
+    return NextResponse.json(
+      { error: "Failed to update stream status" },
+      { status: 500 }
+    );
   }
 }
