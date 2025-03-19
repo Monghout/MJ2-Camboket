@@ -3,17 +3,24 @@
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import { useUser } from "@clerk/nextjs";
 import CheckoutButton from "./payment-button";
+import Link from "next/link";
 
 export default function Header() {
   const { user } = useUser();
 
   return (
-    <div className="bg-black text-white p-6">
+    <div className="text-white p-6">
       {/* Header */}
       <header className="relative flex items-center justify-between">
         {/* Left Side - Logo */}
         <div className="left-28">
-          <img src="./logo-2.png" className="h-16 w-36" alt="Logo" />
+          <Link href="/" passHref>
+            <img
+              src="https://files.edgestore.dev/pd7j45rm5byeyxbm/publicFiles/_public/eae6848a-e4cc-4597-af06-fc128da1bd28.png"
+              className="h-16 w-36 cursor-pointer"
+              alt="Logo"
+            />
+          </Link>
         </div>
 
         {/* Centered Welcome Message */}
@@ -25,7 +32,6 @@ export default function Header() {
 
         {/* Right Side - User Button */}
         <div className="flex items-center gap-4">
-          {" "}
           <CheckoutButton />
           {user ? (
             <UserButton afterSignOutUrl="/" />

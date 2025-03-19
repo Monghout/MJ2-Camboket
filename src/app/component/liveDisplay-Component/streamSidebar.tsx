@@ -23,7 +23,7 @@ export default function StreamSidebar({
       <SellerInfo
         name={seller?.name}
         email={seller?.email}
-        imageUrl={seller?.imageUrl}
+        photo={seller?.photo}
         isBuyer={isBuyer}
         followers={0}
       />

@@ -1,5 +1,11 @@
 import mongoose, { Schema, Document } from "mongoose";
 
+export interface Follower {
+  followerId: string;
+  followerName: string;
+  action: string;
+}
+
 export interface ILiveStream extends Document {
   sellerId: string;
   sellerName: string;
@@ -18,8 +24,8 @@ export interface ILiveStream extends Document {
   streamKey: string;
   muxStreamId: String;
   playbackId: string;
-  followers: { followerId: string; followerName: string; action: String }[]; // Array of followers
-  followerCount: number; // Counter for followers
+  followers: Follower[]; // Using the Follower interface here
+  followerCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,7 +50,7 @@ const LiveStreamSchema = new Schema<ILiveStream>(
     isLive: { type: Boolean, default: true },
     streamKey: { type: String, required: true, unique: true },
     playbackId: { type: String, required: true, unique: true },
-    muxStreamId: { type: String, required: true }, // Store the Mux Stream ID
+    muxStreamId: { type: String, required: true },
     followers: [
       {
         followerId: { type: String, required: true },

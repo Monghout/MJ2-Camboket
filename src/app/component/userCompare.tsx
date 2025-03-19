@@ -1,20 +1,48 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useUser } from "@clerk/clerk-react"; // Import Clerk's useUser hook
+
+// Define types for stream and user
+interface Stream {
+  _id: string;
+  title: string;
+  category: string;
+  description: string;
+  isLive: boolean;
+  thumbnail?: string;
+  sellerId: string;
+  sellerName: string;
+}
+
+interface User {
+  clerkId: string;
+  _id: string;
+  stream: string;
+}
+
+interface State {
+  user: User | null;
+  userStreams: Stream[];
+  otherStreams: Stream[];
+  loading: boolean;
+  error: string | null;
+}
 
 export default function UserStreamDisplay() {
   const { user: clerkUser } = useUser(); // Get the logged-in Clerk user
-  const [user, setUser] = useState<any | null>(null);
-  const [userStreams, setUserStreams] = useState<any[]>([]);
-  const [otherStreams, setOtherStreams] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<State>({
+    user: null,
+    userStreams: [],
+    otherStreams: [],
+    loading: true,
+    error: null,
+  });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
+        setState((prevState) => ({ ...prevState, loading: true }));
 
         if (!clerkUser) {
           throw new Error("User is not logged in.");
@@ -28,16 +56,13 @@ export default function UserStreamDisplay() {
           throw new Error(userData.error || "No user data found.");
         }
 
-        // Find the logged-in user by matching clerkId
         const loggedInUser = userData.users.find(
-          (user: any) => user.clerkId === clerkUser.id // Use Clerk's user id here
+          (user: User) => user.clerkId === clerkUser.id // Use Clerk's user id here
         );
 
         if (!loggedInUser) {
           throw new Error("Logged-in user not found.");
         }
-
-        setUser(loggedInUser);
 
         // Fetch all livestreams from /api/livestreams endpoint
         const streamRes = await fetch("/api/livestreams");
@@ -50,47 +75,59 @@ export default function UserStreamDisplay() {
 
         // Find the stream based on the user's `stream` field (which is the stream's _id)
         const userStream = streamData.livestreams.find(
-          (stream: any) => stream._id === loggedInUser.stream.toString()
+          (stream: Stream) => stream._id === loggedInUser.stream.toString()
         );
 
         const userOwnedStreams = userStream ? [userStream] : [];
 
         // Filter out other streams that don't belong to the logged-in user
         const otherUserStreams = streamData.livestreams.filter(
-          (stream: any) => stream.sellerId !== loggedInUser._id
+          (stream: Stream) => stream.sellerId !== loggedInUser._id
         );
 
-        // Set the streams data
-        setUserStreams(userOwnedStreams);
-        setOtherStreams(otherUserStreams);
+        setState({
+          user: loggedInUser,
+          userStreams: userOwnedStreams,
+          otherStreams: otherUserStreams,
+          loading: false,
+          error: null,
+        });
       } catch (err) {
         console.error("❌ Error:", err);
-        setError(err instanceof Error ? err.message : "Unknown error");
-      } finally {
-        setLoading(false);
+        setState((prevState) => ({
+          ...prevState,
+          loading: false,
+          error: err instanceof Error ? err.message : "Unknown error",
+        }));
       }
     };
 
     fetchData();
   }, [clerkUser]); // Add clerkUser dependency so the effect runs when the logged-in user changes
 
+  // Memoize streams to avoid unnecessary re-calculations on each render
+  const memoizedOtherStreams = useMemo(
+    () => state.otherStreams,
+    [state.otherStreams]
+  );
+
   return (
     <div className="p-4 bg-gray-900 text-white rounded-lg shadow-md">
       <h2 className="text-xl font-bold mb-4">Stream Information</h2>
 
-      {loading && <p className="text-yellow-400">⏳ Loading...</p>}
+      {state.loading && <p className="text-yellow-400">⏳ Loading...</p>}
 
-      {error && (
+      {state.error && (
         <div className="bg-red-500 text-white p-2 rounded-md mb-4">
-          ❌ {error}
+          ❌ {state.error}
         </div>
       )}
 
       {/* ✅ User's Streams Section */}
-      {userStreams.length > 0 ? (
+      {state.userStreams.length > 0 ? (
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-2">Your Stream</h3>
-          {userStreams.map((stream) => (
+          {state.userStreams.map((stream) => (
             <div
               key={stream._id}
               className="bg-gray-800 p-2 rounded-md shadow-sm mb-2"
@@ -130,21 +167,21 @@ export default function UserStreamDisplay() {
       <div>
         <h3 className="text-lg font-semibold mb-2">All Streams</h3>
         <ul className="space-y-2">
-          {otherStreams.length > 0
-            ? otherStreams.map((stream) => (
-                <li
-                  key={stream._id}
-                  className="bg-gray-800 p-2 rounded-md shadow-sm"
-                >
-                  <strong>{stream.sellerName}</strong> - {stream.title} (ID:{" "}
-                  {stream._id})
-                </li>
-              ))
-            : !loading && (
-                <li className="bg-gray-800 p-2 rounded-md shadow-sm">
-                  No other streams found.
-                </li>
-              )}
+          {memoizedOtherStreams.length > 0 ? (
+            memoizedOtherStreams.map((stream) => (
+              <li
+                key={stream._id}
+                className="bg-gray-800 p-2 rounded-md shadow-sm"
+              >
+                <strong>{stream.sellerName}</strong> - {stream.title} (ID:{" "}
+                {stream._id})
+              </li>
+            ))
+          ) : !state.loading ? (
+            <li className="bg-gray-800 p-2 rounded-md shadow-sm">
+              No other streams found.
+            </li>
+          ) : null}
         </ul>
       </div>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Activity,
@@ -51,17 +51,32 @@ type LiveStreamData = {
 
 export default function LiveStreams() {
   const { id } = useParams();
+  const router = useRouter();
   const [liveStreams, setLiveStreams] = useState<LiveStreamData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const fetchLiveStreams = async () => {
+    const fetchUserAndStreams = async () => {
       try {
-        const response = await fetch("/api/mux");
-        const data = await response.json();
-        if (response.ok) {
-          setLiveStreams(data.liveStreams || []);
+        // Fetch user data
+        const userResponse = await fetch("/api/user");
+        const userData = await userResponse.json();
+
+        // Check if the user is an admin
+        if (userData.stream !== "admin") {
+          router.push("/");
+          return;
+        }
+
+        setIsAdmin(true);
+
+        // Fetch live streams data
+        const streamsResponse = await fetch("/api/mux");
+        const streamsData = await streamsResponse.json();
+        if (streamsResponse.ok) {
+          setLiveStreams(streamsData.liveStreams || []);
         } else {
           setError("Failed to fetch live streams.");
         }
@@ -73,8 +88,8 @@ export default function LiveStreams() {
       }
     };
 
-    fetchLiveStreams();
-  }, []);
+    fetchUserAndStreams();
+  }, [router]);
 
   const handleCompareStream = (liveStreamId: string) => {
     if (id === liveStreamId) {
@@ -83,6 +98,10 @@ export default function LiveStreams() {
       toast.error("Live Stream IDs do not match.");
     }
   };
+
+  if (!isAdmin) {
+    return null; // Redirecting, so no need to render anything
+  }
 
   if (loading) {
     return (

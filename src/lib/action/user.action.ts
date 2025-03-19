@@ -21,43 +21,6 @@ export async function UserCreate(user: any) {
   }
 }
 
-export async function updateUserOnlineStatus(
-  clerkId: string,
-  isOnline: boolean
-) {
-  try {
-    await connectDB();
-
-    const updatedUser = await User.findOneAndUpdate(
-      { clerkId },
-      {
-        isOnline,
-        lastSeen: new Date(),
-      },
-      { new: true }
-    );
-
-    if (!updatedUser) {
-      console.log(
-        `No user found with clerkId ${clerkId} to update online status`
-      );
-      return null;
-    }
-
-    return updatedUser;
-  } catch (error: unknown) {
-    console.error("Error updating user online status:", error);
-
-    // Ensure error is an instance of Error
-    if (error && typeof error === "object" && "message" in error) {
-      const err = error as { message: string }; // Cast it safely
-      throw new Error("Error updating user online status: " + err.message);
-    } else {
-      throw new Error("An unknown error occurred while updating online status");
-    }
-  }
-}
-
 // Helper function to get all sellers with their online status
 export async function getAllSellers() {
   try {

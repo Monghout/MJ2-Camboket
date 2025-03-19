@@ -10,6 +10,7 @@ interface Seller {
   name: string;
   email: string;
   role: string;
+  photo: string;
   isOnline?: boolean; // Ensure this field is included in your API response
 }
 
@@ -68,10 +69,7 @@ export default function SellersPanel() {
                 >
                   <div className="relative">
                     <Avatar className="h-10 w-10 border-2 border-gray-800">
-                      <AvatarImage
-                        src={`/placeholder.svg?height=40&width=40`}
-                        alt={seller.name}
-                      />
+                      <AvatarImage src={seller.photo} alt={seller.name} />
                       <AvatarFallback>{seller.name[0]}</AvatarFallback>
                     </Avatar>
                     {seller.isOnline && ( // Only show green dot if isOnline is true

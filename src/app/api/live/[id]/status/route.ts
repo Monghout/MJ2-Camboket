@@ -9,8 +9,8 @@ export async function PUT(
 ) {
   try {
     await connectDB();
-
     const { id } = params;
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid stream ID" }, { status: 400 });
     }
@@ -25,21 +25,17 @@ export async function PUT(
       );
     }
 
-    const isLive = status === "active";
-
-    const updatedStream = await LiveStream.findByIdAndUpdate(
-      id,
-      { isLive },
-      { new: true }
-    );
-
-    if (!updatedStream) {
+    const stream = await LiveStream.findById(id);
+    if (!stream) {
       return NextResponse.json({ error: "Stream not found" }, { status: 404 });
     }
 
+    stream.isLive = status === "active";
+    await stream.save(); // Save the updated document
+
     return NextResponse.json({
       message: "Stream status updated",
-      stream: updatedStream,
+      stream,
     });
   } catch (error) {
     console.error("Database error:", error);

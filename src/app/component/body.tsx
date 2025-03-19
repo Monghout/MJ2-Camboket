@@ -13,6 +13,7 @@ import MuxPlayer from "@mux/mux-player-react";
 import CompareUserAndSellerIds from "./userCompare";
 import StreamIdDisplay from "./userCompare";
 import LiveStreamsPage from "./LiveStreamsPage";
+import Carousal from "./carousal";
 
 // import LiveStreamsPage from "./LiveStreamsPage";
 
@@ -29,16 +30,10 @@ export default function LandingPage() {
   return (
     <div className="container text-white mx-auto px-4 py-8">
       <h1 className="text-4xl font-bold mb-8 text-center">CamboKet</h1>
-      {/* Featured Section with separated components */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="md:col-span-1">
-          <SellersPanel />
-        </div>{" "}
-        <div className="md:col-span-3">
-          <ProductShowcase />
-        </div>
+      <div className="flex gap-4 mb-8">
+        <Carousal />
+        {/* Featured Section with separated components */}
       </div>
-      <UserList />
       {/* Search and Filter */}
       <div className="flex gap-4 mb-8">
         <div className="relative flex-grow">
