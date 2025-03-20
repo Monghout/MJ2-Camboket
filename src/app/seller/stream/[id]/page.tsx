@@ -158,26 +158,6 @@ export default function StreamPage() {
     }
   };
 
-  // Combined useEffect for all intervals
-  useEffect(() => {
-    // Initial fetch
-    fetchData();
-
-    // Set up status refresh interval
-    intervalRefs.current.status = setInterval(fetchData, 2000);
-
-    // Initial stream data fetch
-    if (id) fetchStreamData();
-
-    // Cleanup all intervals on unmount
-    return () => {
-      if (intervalRefs.current.status)
-        clearInterval(intervalRefs.current.status);
-      if (intervalRefs.current.player)
-        clearInterval(intervalRefs.current.player);
-    };
-  }, [id, user?.id]);
-
   // Copy stream key
   const handleCopyStreamKey = async () => {
     if (isCopyDisabled) return;
@@ -329,14 +309,13 @@ export default function StreamPage() {
 
           <div className="w-full md:w-1/4 space-y-6">
             <SellerInfo
-              name={seller?.name}
-              email={seller?.email}
-              photo={seller?.photo}
-              followers={stream.followers}
-              isBuyer={isBuyer}
-            />
+              {...seller}
+              followers={
+                stream.followers?.map((f: any) => f.followerName) || []
+              }
+            />{" "}
             {isBuyer && (
-              <Button onClick={handleFollowToggle} className="mt-4">
+              <Button onClick={handleFollowToggle}>
                 {isFollowing ? "Unfollow" : "Follow"}
               </Button>
             )}

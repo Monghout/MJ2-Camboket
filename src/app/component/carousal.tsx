@@ -1,19 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useUser } from "@clerk/clerk-react";
 import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardContent } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
+  type CarouselApi,
 } from "@/components/ui/carousel";
-
+import { Button } from "@/components/ui/button";
+import { Pause, Play, ChevronLeft, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 interface Seller {
   _id: string;
   clerkId: string;
@@ -42,11 +41,64 @@ interface Livestream {
 }
 
 export default function FeaturedSection() {
-  const { user: clerkUser, isLoaded, isSignedIn } = useUser();
+  const { isLoaded, isSignedIn } = useUser();
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  // Carousel auto-scroll state
+  const [api, setApi] = useState<CarouselApi>();
+  const [isPaused, setIsPaused] = useState(false);
+  const [current, setCurrent] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Set up carousel API
+  const onSelect = useCallback(() => {
+    if (!api) return;
+    setCurrent(api.selectedScrollSnap());
+  }, [api]);
+
+  useEffect(() => {
+    if (!api) return;
+    onSelect();
+    api.on("select", onSelect);
+    return () => {
+      api.off("select", onSelect);
+    };
+  }, [api, onSelect]);
+
+  // Auto-scroll functionality with infinite loop
+  useEffect(() => {
+    if (!api || isPaused || featuredProducts.length <= 1) return;
+
+    const startAutoScroll = () => {
+      intervalRef.current = setInterval(() => {
+        if (current === featuredProducts.length - 1) {
+          api.scrollTo(0); // Loop back to first slide
+        } else {
+          api.scrollNext();
+        }
+      }, 6000); // Change slide every 5 seconds
+    };
+
+    startAutoScroll();
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [api, isPaused, featuredProducts.length, current]);
+  // Toggle pause/play
+  const togglePause = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
+    setIsPaused(!isPaused);
+  };
 
   useEffect(() => {
     if (!isLoaded) {
@@ -119,120 +171,137 @@ export default function FeaturedSection() {
 
   // Render content based on authentication state
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-black rounded-xl overflow-hidden">
-      <Card className="md:col-span-1 bg-black border-0">
-        <CardContent className="p-4">
-          <h2 className="text-xl font-bold text-white mb-4">
-            You can find these products at
-          </h2>
-          {loading ? (
-            <p className="text-white">Loading sellers...</p>
-          ) : error ? (
-            <p className="text-red-500">{error}</p>
-          ) : !isSignedIn ? (
-            <p className="text-white">You are not logged in. Please sign in.</p>
-          ) : sellers.length === 0 ? (
-            <p className="text-white">No sellers found.</p>
-          ) : (
-            <ScrollArea className="h-[400px] pr-4">
-              <div className="space-y-4">
-                {sellers.map((seller) => {
-                  // Count how many products the seller owns
-                  const productsOwned = featuredProducts.filter(
-                    (product) => product.sellerId === seller._id
-                  ).length;
+    <div className="w-full bg-gradient-to-br from-black to-gray-900 rounded-xl overflow-hidden p-4 shadow-2xl border border-gray-800">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-2xl font-bold text-white flex items-center">
+          <span className="bg-white w-2 h-6 mr-3 rounded-sm inline-block"></span>
+          Featured Products
+        </h3>
 
-                  return (
-                    <div
-                      key={seller.clerkId}
-                      className="flex items-center space-x-4"
-                    >
-                      <Avatar className="h-10 w-10 border-2 border-gray-800">
-                        <AvatarImage src={seller.photo} alt={seller.name} />
-                        <AvatarFallback>{seller.name[0]}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-white">{seller.name}</span>
-                        {productsOwned > 0 && (
-                          <span className="text-xs text-gray-400">
-                            ({productsOwned} products)
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
+        {/* Only the pause/play button in the top right */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={togglePause}
+          className="rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white hover:bg-white hover:text-black transition-all"
+        >
+          {isPaused ? (
+            <Play className="h-5 w-5" />
+          ) : (
+            <Pause className="h-5 w-5" />
           )}
-        </CardContent>
-      </Card>
+        </Button>
+      </div>
 
-      <Card className="md:col-span-3 bg-black">
-        <CardContent className="p-6">
-          <h3 className="text-xl font-bold text-white mb-4">
-            Featured Products
-          </h3>
-          {loading ? (
-            <p className="text-white">Loading products...</p>
-          ) : error ? (
-            <p className="text-red-500">{error}</p>
-          ) : !isSignedIn ? (
-            <p className="text-white">You are not logged in. Please sign in.</p>
-          ) : featuredProducts.length === 0 ? (
-            <p className="text-white">No featured products found.</p>
-          ) : (
-            <Carousel className="w-full">
-              <CarouselContent>
-                {featuredProducts.map((product) => {
-                  const seller = sellers.find(
-                    (s) => s._id === product.sellerId
-                  );
+      {loading ? (
+        <p className="text-white">Loading products...</p>
+      ) : error ? (
+        <p className="text-red-500">{error}</p>
+      ) : !isSignedIn ? (
+        <p className="text-white">You are not logged in. Please sign in.</p>
+      ) : featuredProducts.length === 0 ? (
+        <p className="text-white">No featured products found.</p>
+      ) : (
+        <div className="relative">
+          <Carousel className="w-full" setApi={setApi}>
+            <CarouselContent>
+              {featuredProducts.map((product) => {
+                const seller = sellers.find((s) => s._id === product.sellerId);
 
-                  return (
-                    <CarouselItem
-                      key={product._id}
-                      className="md:basis-1/2 lg:basis-1/3"
-                    >
-                      <div className="p-4 bg-gray-900 rounded-lg h-full">
-                        <div className="aspect-square relative w-full h-64 mb-4">
-                          <Image
-                            src={
-                              product.image ||
-                              "/placeholder.svg?height=300&width=300" ||
-                              "/placeholder.svg"
-                            }
-                            alt={product.description}
-                            fill
-                            className="rounded-lg object-cover"
-                          />
-                        </div>
-                        <div className="mt-2">
-                          <h4 className="text-lg font-semibold text-white">
+                return (
+                  <CarouselItem key={product._id} className="basis-full">
+                    <div className="rounded-xl h-full shadow-lg">
+                      <div
+                        className="relative w-full h-[500px] mb-4 overflow-hidden rounded-lg cursor-pointer hover:scale-[1.01] transition-transform duration-300"
+                        onClick={() =>
+                          seller?.stream &&
+                          router.push(`/seller/stream/${seller.stream}`)
+                        }
+                      >
+                        <Image
+                          src={product.image || "/placeholder.svg"}
+                          alt={product.description}
+                          fill
+                          className="rounded-lg object-contain"
+                        />
+                      </div>
+                      <div className="flex justify-between items-end">
+                        <div>
+                          <h4 className="text-lg font-bold text-white">
                             {product.description}
                           </h4>
-                          <p className="text-gray-400">
+                          <p className="text-xl font-semibold text-white">
                             ${product.price.toFixed(2)}
                           </p>
                         </div>
+
+                        {/* Seller information at the bottom right */}
                         {seller && (
-                          <div className="mt-2 text-sm text-gray-500">
-                            <span className="font-semibold text-white">
-                              Seller: {seller.name}
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8 border border-white">
+                              <AvatarImage
+                                src={seller.photo}
+                                alt={seller.name}
+                              />
+                              <AvatarFallback>{seller.name[0]}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium text-gray-300">
+                              {seller.name}
                             </span>
                           </div>
                         )}
                       </div>
-                    </CarouselItem>
-                  );
-                })}
-              </CarouselContent>
-              <CarouselPrevious className="text-white border-white" />
-              <CarouselNext className="text-white border-white" />
-            </Carousel>
-          )}
-        </CardContent>
-      </Card>
+                    </div>
+                  </CarouselItem>
+                );
+              })}
+            </CarouselContent>
+
+            {/* Custom navigation buttons */}
+            {/* <Button
+              variant="ghost"
+              size="icon"
+              className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white hover:bg-white hover:text-black transition-all h-12 w-12"
+              onClick={() => api?.scrollPrev()}
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </Button> */}
+
+            {/* <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white hover:bg-white hover:text-black transition-all h-12 w-12"
+              onClick={() => api?.scrollNext()}
+            >
+              <ChevronRight className="h-6 w-6" />
+            </Button> */}
+
+            {/* Carousel indicators - vertical on middle right */}
+            {featuredProducts.length > 1 && (
+              <div
+                className="absolute right-4 top-1/4 -translate-y-1/2 flex flex-col gap-2 mt-0 z-10"
+                style={{ marginTop: "80px" }}
+              >
+                {featuredProducts.map((_, index) => (
+                  <button
+                    key={index}
+                    className={`transition-all rounded-full ${
+                      current === index
+                        ? "h-8 w-2 bg-white"
+                        : "h-2 w-2 bg-white/30"
+                    }`}
+                    onClick={() => {
+                      api?.scrollTo(index); // Move to clicked slide
+                      setCurrent(index); // Ensure current state updates
+                    }}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+            )}
+          </Carousel>
+        </div>
+      )}
     </div>
   );
 }

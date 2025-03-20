@@ -29,7 +29,6 @@ export default function LandingPage() {
 
   return (
     <div className="container text-white mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8 text-center">CamboKet</h1>
       <div className="flex gap-4 mb-8">
         <Carousal />
         {/* Featured Section with separated components */}
@@ -54,10 +53,10 @@ export default function LandingPage() {
       </div>
       {/* Live Stream Placeholders */}
 
-      <div className="p-8">
+      {/* <div className="p-8">
         <h1 className="text-2xl font-bold mb-6">Stream Information</h1>
         <StreamIdDisplay />
-      </div>
+      </div> */}
       <LiveStreamsPage />
     </div>
   );
