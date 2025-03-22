@@ -27,7 +27,7 @@ export default function ProductList({
               <div className="aspect-video relative">
                 <img
                   src={product.image || "/placeholder.svg"}
-                  alt={product.title}
+                  alt={product.name}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute bottom-0 right-0 p-2">
@@ -51,7 +51,7 @@ export default function ProductList({
                 )}
               </div>
               <CardContent className="p-3">
-                <h3 className="font-medium truncate">{product.title}</h3>
+                <h3 className="font-medium truncate">{product.name}</h3>
                 <p className="text-sm text-muted-foreground truncate">
                   {product.description}
                 </p>

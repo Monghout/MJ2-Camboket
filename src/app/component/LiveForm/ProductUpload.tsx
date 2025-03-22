@@ -12,7 +12,7 @@ import { DollarSign, ImagePlus, Tag, Trash2, Upload } from "lucide-react";
 
 interface ProductUploadProps {
   product: {
-    title: string;
+    name: string;
     image: string;
     price: number;
     description: string;
@@ -22,7 +22,7 @@ interface ProductUploadProps {
   onUpdate: (
     index: number,
     product: {
-      title: string;
+      name: string;
       image: string;
       price: number;
       description: string;
@@ -63,7 +63,11 @@ export default function ProductUpload({
         },
       });
 
-      onUpdate(index, { ...product, image: url });
+      onUpdate(index, {
+        ...product,
+        image: url,
+        name: "",
+      });
     } catch (error) {
       console.error("Upload failed", error);
       setError("Failed to upload product image. Please try again.");
@@ -80,36 +84,41 @@ export default function ProductUpload({
   };
 
   const handleRemoveImage = () => {
-    onUpdate(index, { ...product, image: "" });
+    onUpdate(index, {
+      ...product,
+      image: "",
+      name: "",
+    });
   };
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
 
-    // Validate price
     if (value === "") {
-      // Allow empty input
       setPriceError(null);
       onUpdate(index, { ...product, price: 0 });
-    } else {
-      const numericValue = Number.parseFloat(value);
+      return;
+    }
 
-      if (isNaN(numericValue)) {
-        setPriceError("Price must be a valid number.");
-        onUpdate(index, { ...product, price: 0 });
-      } else if (numericValue < 0) {
-        setPriceError("Price cannot be less than zero.");
-        onUpdate(index, { ...product, price: 0 });
-      } else {
-        setPriceError(null);
-        onUpdate(index, { ...product, price: numericValue });
-      }
+    const numericValue = Number.parseFloat(value);
+
+    if (isNaN(numericValue)) {
+      setPriceError("Price must be a valid number.");
+    } else if (numericValue < 0) {
+      setPriceError("Price cannot be less than zero.");
+    } else {
+      setPriceError(null);
+      onUpdate(index, { ...product, price: numericValue });
     }
   };
 
   const handleFeatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const isChecked = e.target.checked;
-    onUpdate(index, { ...product, feature: isChecked });
+    onUpdate(index, {
+      ...product,
+      feature: isChecked,
+      name: "",
+    });
   };
 
   return (
@@ -117,18 +126,18 @@ export default function ProductUpload({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label
-            htmlFor={`product-title-${index}`}
+            htmlFor={`product-name-${index}`}
             className="flex items-center gap-1"
           >
             <Tag className="h-3.5 w-3.5" />
             Product Title
           </Label>
           <Input
-            id={`product-title-${index}`}
+            id={`product-name-${index}`}
             placeholder="Enter product name"
-            value={product.title}
+            value={product.name}
             onChange={(e) =>
-              onUpdate(index, { ...product, title: e.target.value })
+              onUpdate(index, { ...product, name: e.target.value })
             }
           />
         </div>
@@ -160,7 +169,11 @@ export default function ProductUpload({
           placeholder="Describe your product"
           value={product.description}
           onChange={(e) =>
-            onUpdate(index, { ...product, description: e.target.value })
+            onUpdate(index, {
+              ...product,
+              description: e.target.value,
+              name: "",
+            })
           }
           className="resize-none min-h-[80px]"
         />
@@ -175,7 +188,7 @@ export default function ProductUpload({
               <div className="aspect-square rounded-md overflow-hidden bg-muted">
                 <img
                   src={product.image || "/placeholder.svg"}
-                  alt={product.title || "Product"}
+                  alt={product.name || "Product"}
                   className="w-full h-full object-cover"
                 />
               </div>

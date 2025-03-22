@@ -16,6 +16,7 @@ import { Copy, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import Header from "@/app/component/header";
 import Link from "next/link";
+import ChatComponent from "@/app/component/chatComponent";
 
 export default function StreamPage() {
   const { id } = useParams();
@@ -38,30 +39,33 @@ export default function StreamPage() {
 
   // Combined fetch functions
   const fetchData = async () => {
-    // Fetch Mux streams
     try {
       const response = await fetch("/api/mux");
       if (response.ok) {
         const data = await response.json();
         setMuxStreams(data.liveStreams);
 
-        // Check if we need to refresh the player
         if (stream?.liveStreamId) {
           const matchedStream = data.liveStreams.find(
             (ms: any) => ms.id === stream.liveStreamId
           );
-          if (matchedStream?.status === "active") {
-            // If active and player refresh not set up, set it up
-            if (!intervalRefs.current.player) {
-              intervalRefs.current.player = setInterval(
-                () => setPlayerKey((k) => k + 1),
-                2000
-              );
-            }
-          } else if (intervalRefs.current.player) {
-            // If not active but interval exists, clear it
-            clearInterval(intervalRefs.current.player);
-            intervalRefs.current.player = null;
+
+          const muxStatus = matchedStream?.status;
+          const shouldBeLive = muxStatus;
+
+          if (stream.isLive !== shouldBeLive) {
+            console.log("📤 Syncing to MongoDB...");
+
+            const updateResponse = await fetch(`/api/live/${id}/status`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ isLive: shouldBeLive }),
+            });
+
+            const updateData = await updateResponse.json();
+            console.log("✅ MongoDB response:", updateData);
+
+            setStream((prev: any) => ({ ...prev, isLive: shouldBeLive }));
           }
         }
       }
@@ -69,7 +73,6 @@ export default function StreamPage() {
       console.error("Error fetching Mux streams:", error);
     }
 
-    // Fetch stream data if needed
     if (!stream && id && !loading) {
       fetchStreamData();
     }
@@ -321,6 +324,26 @@ export default function StreamPage() {
             )}
             {stream.products.length > 0 && (
               <FeaturedProducts products={stream.products} />
+            )}
+            {isBuyer && (
+              <div className="pt-4">
+                <h2 className="text-lg font-semibold">Chat with Seller</h2>
+                <ChatComponent
+                  currentUserId={user?.id!}
+                  currentUserName={user?.fullName!}
+                  sellerId={seller?.clerkId!}
+                />
+              </div>
+            )}{" "}
+            {isSeller && (
+              <div className="pt-4">
+                <h2 className="text-lg font-semibold">Chat with Buyer</h2>
+                <ChatComponent
+                  currentUserId={user?.id!}
+                  currentUserName={user?.fullName!}
+                  sellerId={seller?.clerkId!}
+                />
+              </div>
             )}
           </div>
         </div>

@@ -11,7 +11,7 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
-import { Pause, Play, ChevronLeft, ChevronRight } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 import { useRouter } from "next/navigation";
 interface Seller {
   _id: string;
@@ -24,6 +24,7 @@ interface Seller {
 }
 
 interface Product {
+  name: string;
   _id: string;
   description: string;
   price: number;
@@ -79,7 +80,7 @@ export default function FeaturedSection() {
         } else {
           api.scrollNext();
         }
-      }, 6000); // Change slide every 5 seconds
+      }, 6000); // Change slide every 6 seconds
     };
 
     startAutoScroll();
@@ -90,6 +91,7 @@ export default function FeaturedSection() {
       }
     };
   }, [api, isPaused, featuredProducts.length, current]);
+
   // Toggle pause/play
   const togglePause = () => {
     if (intervalRef.current) {
@@ -171,7 +173,7 @@ export default function FeaturedSection() {
 
   // Render content based on authentication state
   return (
-    <div className="w-full bg-gradient-to-br from-black to-gray-900 rounded-xl overflow-hidden p-4 shadow-2xl border border-gray-800">
+    <div className="w-full bg-gradient-to-brrounded-xl overflow-hidden p-4 shadow-2xl">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-2xl font-bold text-white flex items-center">
           <span className="bg-white w-2 h-6 mr-3 rounded-sm inline-block"></span>
@@ -210,9 +212,9 @@ export default function FeaturedSection() {
 
                 return (
                   <CarouselItem key={product._id} className="basis-full">
-                    <div className="rounded-xl h-full shadow-lg">
+                    <div className="rounded-xl h-full shadow-lg group">
                       <div
-                        className="relative w-full h-[500px] mb-4 overflow-hidden rounded-lg cursor-pointer hover:scale-[1.01] transition-transform duration-300"
+                        className="relative w-full h-[500px] overflow-hidden cursor-pointer transition-transform duration-300 group-hover:scale-[1.01]"
                         onClick={() =>
                           seller?.stream &&
                           router.push(`/seller/stream/${seller.stream}`)
@@ -224,57 +226,52 @@ export default function FeaturedSection() {
                           fill
                           className="rounded-lg object-contain"
                         />
-                      </div>
-                      <div className="flex justify-between items-end">
-                        <div>
-                          <h4 className="text-lg font-bold text-white">
-                            {product.description}
-                          </h4>
-                          <p className="text-xl font-semibold text-white">
-                            ${product.price.toFixed(2)}
-                          </p>
-                        </div>
 
-                        {/* Seller information at the bottom right */}
-                        {seller && (
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8 border border-white">
-                              <AvatarImage
-                                src={seller.photo}
-                                alt={seller.name}
-                              />
-                              <AvatarFallback>{seller.name[0]}</AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm font-medium text-gray-300">
-                              {seller.name}
-                            </span>
+                        {/* Single info overlay that transforms on hover */}
+                        <div className="absolute inset-0 flex flex-col justify-end rounded-lg ">
+                          <div className="transform transition-all duration-300 ">
+                            <div className="p-2  group-hover:backdrop-blur-md ">
+                              {/* Price badge */}
+                              <div className="flex justify-between items-start ">
+                                <h4 className="text-xl font-bold text-white">
+                                  {product.name}
+                                </h4>
+                                <div className="bg-emerald-500/90 text-white font-bold px-3 py-1 rounded-full text-sm shadow-lg">
+                                  ${product.price.toFixed(2)}
+                                </div>
+                              </div>
+
+                              {/* Description that fades in */}
+                              <div className="mt-3 text-white/80 text-sm opacity-0 max-h-0 group-hover:opacity-100 group-hover:max-h-20 overflow-hidden transition-all duration-500">
+                                <p>{product.description}</p>
+                              </div>
+
+                              {/* Seller information at the bottom */}
+                              {seller && (
+                                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
+                                  <Avatar className="h-8 w-8 border border-white/20">
+                                    <AvatarImage
+                                      src={seller.photo}
+                                      alt={seller.name}
+                                    />
+                                    <AvatarFallback>
+                                      {seller.name[0]}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="text-sm font-medium text-gray-300">
+                                    {seller.name}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
+                        </div>
                       </div>
                     </div>
                   </CarouselItem>
                 );
               })}
             </CarouselContent>
-
-            {/* Custom navigation buttons */}
-            {/* <Button
-              variant="ghost"
-              size="icon"
-              className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white hover:bg-white hover:text-black transition-all h-12 w-12"
-              onClick={() => api?.scrollPrev()}
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </Button> */}
-
-            {/* <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white hover:bg-white hover:text-black transition-all h-12 w-12"
-              onClick={() => api?.scrollNext()}
-            >
-              <ChevronRight className="h-6 w-6" />
-            </Button> */}
 
             {/* Carousel indicators - vertical on middle right */}
             {featuredProducts.length > 1 && (

@@ -27,7 +27,7 @@ export default function Header() {
         <div className="absolute left-1/2 transform -translate-x-1/2">
           <span className="text-lg font-medium">
             <h1 className="text-2xl font-bold text-center">CamboKet</h1>
-            Welcome, {user ? user.username : "Guest"}
+            Welcome, {user ? user.fullName : "Guest"}
           </span>
         </div>
 

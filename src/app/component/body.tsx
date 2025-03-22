@@ -34,23 +34,7 @@ export default function LandingPage() {
         {/* Featured Section with separated components */}
       </div>
       {/* Search and Filter */}
-      <div className="flex gap-4 mb-8">
-        <div className="relative flex-grow">
-          <Input
-            type="text"
-            placeholder="Search for products or sellers"
-            className="pl-10 pr-4 py-2 w-full"
-          />
-          <Search
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-            size={20}
-          />
-        </div>
-        <Button variant="outline" className="flex items-center gap-2">
-          <Filter size={20} />
-          Filter
-        </Button>
-      </div>
+
       {/* Live Stream Placeholders */}
 
       {/* <div className="p-8">

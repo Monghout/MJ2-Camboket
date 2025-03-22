@@ -21,12 +21,12 @@ export default function FeaturedProducts({ products }: FeaturedProductsProps) {
               <div className="h-12 w-12 rounded-md overflow-hidden bg-muted">
                 <img
                   src={product.image || "/placeholder.svg"}
-                  alt={product.title}
+                  alt={product.name}
                   className="h-full w-full object-cover"
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{product.title}</p>
+                <p className="font-medium truncate">{product.name}</p>
                 <p className="text-sm text-primary">${product.price}</p>
               </div>
             </div>

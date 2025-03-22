@@ -1,93 +1,45 @@
-// components/StreamChatProvider.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { StreamChat, Channel as StreamChannel } from "stream-chat";
-import {
-  Chat,
-  Channel,
-  Window,
-  MessageList,
-  MessageInput,
-} from "stream-chat-react";
-import "stream-chat-react/dist/css/v2/index.css";
+import React, { createContext, useContext, ReactNode } from "react";
+import { StreamChat } from "stream-chat";
 
-const apiKey = process.env.PUBLIC_STREAM_KEY; // Your Stream Chat API key
+interface StreamChatContextType {
+  chatClient: StreamChat | null;
+}
+
+const StreamChatContext = createContext<StreamChatContextType>({
+  chatClient: null,
+});
+
+export const useStreamChat = () => useContext(StreamChatContext);
 
 interface StreamChatProviderProps {
-  user: {
-    id: string;
-    name: string;
-    image?: string;
-  };
-  channelId: string;
-  stream: {
-    sellerId: string; // Add sellerId to the stream object
-  };
+  children: ReactNode;
 }
 
 export const StreamChatProvider: React.FC<StreamChatProviderProps> = ({
-  user,
-  channelId,
-  stream,
+  children,
 }) => {
-  const [chatClient, setChatClient] = useState<StreamChat | null>(null);
-  const [channel, setChannel] = useState<StreamChannel | null>(null);
+  const [chatClient, setChatClient] = React.useState<StreamChat | null>(null);
 
-  useEffect(() => {
-    const client = StreamChat.getInstance(apiKey!);
+  React.useEffect(() => {
+    // Initialize Stream Chat client
+    const client = new StreamChat("37a6hrs66ta2");
+    setChatClient(client);
 
-    const connectUser = async () => {
-      try {
-        await client.connectUser(
-          {
-            id: user.id,
-            name: user.name,
-            image: user.image,
-          },
-          client.devToken(user.id) // Use a proper authentication mechanism in production
-        );
-
-        // Create or get the channel
-        const channel = client.channel("livestream", channelId, {
-          name: "Live Stream Chat",
-          created_by_id: user.id,
-        });
-        await channel.watch(); // Start watching the channel
-        setChannel(channel);
-
-        setChatClient(client);
-      } catch (err) {
-        console.error("Error connecting user to Stream Chat:", err);
-      }
-    };
-
-    connectUser();
-
+    // Cleanup function
     return () => {
-      if (chatClient) {
-        chatClient.disconnectUser();
+      if (client) {
+        client.disconnectUser().then(() => {
+          console.log("User disconnected");
+        });
       }
     };
-  }, [user.id, user.name, user.image, channelId]);
-
-  if (!chatClient || !channel) {
-    return <div>Loading chat...</div>;
-  }
-
-  const isOwner = stream.sellerId === user.id; // Check if the logged-in user is the owner
-  const isLoggedIn = !!user; // Check if the user is logged in
+  }, []);
 
   return (
-    <Chat client={chatClient}>
-      <Channel channel={channel}>
-        <Window>
-          <MessageList />
-          <MessageInput
-            disabled={!isOwner || !isLoggedIn} // Disable input for non-owners and non-logged-in users
-          />
-        </Window>
-      </Channel>
-    </Chat>
+    <StreamChatContext.Provider value={{ chatClient }}>
+      {children}
+    </StreamChatContext.Provider>
   );
 };

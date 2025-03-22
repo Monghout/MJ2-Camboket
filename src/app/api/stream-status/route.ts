@@ -1,55 +1,55 @@
-// app/api/stream-status/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import LiveStream from "@/app/models/LiveStream";
-import { connectDB } from "@/lib/mongodb";
+// // /pages/api/live/status/update.ts
 
-export async function GET(request: NextRequest) {
-  const url = new URL(request.url);
-  const playbackId = url.searchParams.get("playbackId");
+// import { NextResponse } from "next/server";
+// import { connectDB } from "@/lib/mongodb"; // Your MongoDB connection function
+// import Stream from "@/app/models/LiveStream"; // Your stream model
+// import fetch from "node-fetch"; // Make sure you have node-fetch installed
 
-  if (!playbackId) {
-    return NextResponse.json(
-      { error: "Playback ID is required" },
-      { status: 400 }
-    );
-  }
+// export async function GET(req: Request) {
+//   try {
+//     await connectDB();
 
-  try {
-    await connectDB();
+//     // Fetch all streams from MongoDB that have a liveStreamId
+//     const streams = await Stream.find({ liveStreamId: { $ne: null } });
 
-    // Find the stream by playback ID in your database
-    const stream = await LiveStream.findOne({ playbackId });
+//     if (!streams || streams.length === 0) {
+//       return NextResponse.json(
+//         { message: "No streams found" },
+//         { status: 404 }
+//       );
+//     }
 
-    if (!stream) {
-      return NextResponse.json({ error: "Stream not found" }, { status: 404 });
-    }
+//     // Loop through each stream and get Mux API status
+//     for (const stream of streams) {
+//       // Fetch the stream status from Mux using the liveStreamId
+//       const response = await fetch(
+//         `https://api.mux.com/video/v1/live-streams/${stream.liveStreamId}`,
+//         {
+//           headers: {
+//             Authorization: `Bearer ${process.env.MUX_API_KEY}`, // Your Mux API key
+//           },
+//         }
+//       );
 
-    // Check Mux API to see if the stream is active
-    // Replace this with actual Mux API call
-    const muxResponse = await fetch(
-      `https://api.mux.com/video/v1/live-streams/${stream.muxStreamId}`,
-      {
-        headers: {
-          Authorization: `Basic ${Buffer.from(
-            `${process.env.MUX_TOKEN_ID}:${process.env.MUX_TOKEN_SECRET}`
-          ).toString("base64")}`,
-        },
-      }
-    );
+//       const muxData = await response.json();
 
-    const muxData = await muxResponse.json();
+//       if (muxData.status) {
+//         // Determine if the stream is live (active)
+//         const isLive = muxData.status;
 
-    // Return stream status
-    return NextResponse.json({
-      isActive: muxData.data.status === "active",
-      isEnabled: muxData.data.status !== "disabled",
-      status: muxData.data.status,
-    });
-  } catch (error) {
-    console.error("Error checking stream status:", error);
-    return NextResponse.json(
-      { error: "Failed to check stream status" },
-      { status: 500 }
-    );
-  }
-}
+//         // Update MongoDB with the correct live status
+//         await Stream.findByIdAndUpdate(stream._id, { isLive });
+//       }
+//     }
+
+//     return NextResponse.json({
+//       message: "Stream statuses updated successfully",
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     return NextResponse.json(
+//       { message: "Internal Server Error" },
+//       { status: 500 }
+//     );
+//   }
+// }

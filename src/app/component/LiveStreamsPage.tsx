@@ -1,15 +1,27 @@
 "use client";
 
-import type React from "react";
-
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Play, Users, Clock } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  RefreshCw,
+  Search,
+} from "lucide-react"; // Import Search icon
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input"; // Import Input component
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"; // Import Select component for category filter
 
 interface Product {
   _id: string;
@@ -21,73 +33,241 @@ interface Product {
 interface Stream {
   _id: string;
   title: string;
-  isLive: boolean;
   thumbnail: string;
   products: Product[];
   sellerName?: string;
   sellerPhoto?: string;
   viewerCount?: number;
   startedAt?: string;
+  liveStreamId?: string;
+  sellerId?: string; // Add sellerId to match the user's _id or clerkId
+  category?: string; // Add category to filter streams
+}
+
+interface MuxStream {
+  id: string;
+  status: string; // Possible values: "active", "idle", "disconnected"
+}
+
+interface User {
+  _id: string;
+  clerkId: string;
+  name: string;
+  photo: string;
 }
 
 export default function LiveStreamsPage() {
   const [streams, setStreams] = useState<Stream[]>([]);
+  const [muxStreams, setMuxStreams] = useState<MuxStream[]>([]);
+  const [users, setUsers] = useState<User[]>([]); // State to store user data
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState(""); // State for search query
+  const [selectedCategory, setSelectedCategory] = useState("all"); // State for selected category
   const router = useRouter();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Function to fetch streams, Mux status, and user data
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch users from /api/user endpoint
+      const userRes = await fetch("/api/user");
+      if (!userRes.ok) throw new Error("Failed to fetch users");
+      const userData = await userRes.json();
+      setUsers(userData.users);
+
+      // Fetch streams from /api/live/streams endpoint
+      const streamRes = await fetch("/api/live/streams");
+      if (!streamRes.ok) throw new Error("Failed to fetch streams");
+      const streamData = await streamRes.json();
+
+      // Fetch Mux stream status
+      const muxResponse = await fetch("/api/mux");
+      if (!muxResponse.ok) throw new Error("Failed to fetch Mux streams");
+      const muxData = await muxResponse.json();
+
+      // Map sellerPhoto to the user's photo
+      const enhancedStreams = streamData.streams.map((stream: Stream) => {
+        const user = users.find(
+          (user) =>
+            user._id === stream.sellerId || user.clerkId === stream.sellerId
+        );
+        return {
+          ...stream,
+          sellerPhoto: user?.photo, // Use user's photo if found
+        };
+      });
+
+      setStreams(enhancedStreams);
+      setMuxStreams(muxData.liveStreams);
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial fetch on component mount
   useEffect(() => {
-    const fetchStreams = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch("/api/live/streams");
-        const data = await res.json();
+    fetchData();
+  }, []);
 
-        if (res.ok) {
-          // Add some mock data for the UI enhancements
-          const enhancedStreams = data.streams.map((stream: Stream) => ({
-            ...stream,
-            sellerName: stream.sellerName || "Seller Name",
-            sellerPhoto:
-              stream.sellerPhoto || "/placeholder.svg?height=40&width=40",
-          }));
-          setStreams(enhancedStreams);
-        } else {
-          console.error("Error fetching streams:", data.error);
+  // Effect to monitor Mux stream status changes
+  useEffect(() => {
+    let previousMuxStreams = muxStreams;
+
+    const checkForStatusChange = async () => {
+      try {
+        const muxResponse = await fetch("/api/mux");
+        if (muxResponse.ok) {
+          const muxData = await muxResponse.json();
+          const currentMuxStreams = muxData.liveStreams;
+
+          // Check if any stream's status has changed
+          const hasStatusChanged = currentMuxStreams.some(
+            (currentStream: MuxStream) => {
+              const previousStream = previousMuxStreams.find(
+                (prevStream) => prevStream.id === currentStream.id
+              );
+              return previousStream?.status !== currentStream.status;
+            }
+          );
+
+          if (hasStatusChanged) {
+            // Refresh the streams list if a status change is detected
+            await fetchData();
+            previousMuxStreams = currentMuxStreams; // Update the previous state
+          }
+
+          // Check for disconnected or idle streams
+          currentMuxStreams.forEach((currentStream: MuxStream) => {
+            const previousStream = previousMuxStreams.find(
+              (prevStream) => prevStream.id === currentStream.id
+            );
+
+            if (
+              previousStream?.status === "active" &&
+              (currentStream.status === "idle" ||
+                currentStream.status === "disconnected")
+            ) {
+              console.log(
+                `Stream ${currentStream.id} is now ${currentStream.status}`
+              );
+              // You can trigger additional actions here, like showing a toast notification
+            }
+          });
         }
       } catch (error) {
-        console.error("Failed to fetch streams:", error);
-      } finally {
-        setLoading(false);
+        console.error("Error checking Mux stream status:", error);
       }
     };
 
-    fetchStreams();
-  }, []);
+    // Set up an interval to check for status changes every 5 seconds
+    intervalRef.current = setInterval(checkForStatusChange, 5000);
 
-  // Filter streams to only include those with isLive === true
-  const liveStreams = streams.filter((stream) => stream.isLive === true);
+    // Clean up the interval on component unmount
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [muxStreams]);
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-pulse flex flex-col items-center">
-          <div className="h-12 w-12 rounded-full bg-black mb-4"></div>
-          <div className="h-4 w-32 bg-black rounded"></div>
-        </div>
-      </div>
-    );
-  }
+  // Filter streams based on Mux status, search query, and selected category
+  const liveStreams = streams
+    .filter((stream) => {
+      const muxStream = muxStreams.find((ms) => ms.id === stream.liveStreamId);
+      return muxStream?.status === "active"; // Only show streams with active Mux status
+    })
+    .filter((stream) => {
+      // Filter by search query (title or seller name)
+      const matchesSearch =
+        stream.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        stream.sellerName?.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesSearch;
+    })
+    .filter((stream) => {
+      // Filter by selected category
+      if (selectedCategory === "all") return true;
+      return stream.category === selectedCategory;
+    });
+
+  // Refresh button handler
+  const handleRefresh = async () => {
+    setLoading(true); // Show loading state while refreshing
+    await fetchData(); // Re-fetch streams and Mux status
+  };
+
+  // Get unique categories from streams
+  const categories = Array.from(
+    new Set(streams.map((stream) => stream.category).filter(Boolean))
+  );
 
   return (
     <div className="container mx-auto p-6">
+      {/* Header with label, badge, and refresh button */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Live Streams</h1>
-        <Badge variant="outline" className="px-3 py-1 text-sm font-medium">
-          {liveStreams.length} Live Now
-        </Badge>
+        <div className="flex items-center gap-4">
+          <Badge variant="outline" className="px-3 py-1 text-sm font-medium">
+            {liveStreams.length} Live Now
+          </Badge>
+          {/* Refresh Button */}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={loading}
+            aria-label="Refresh streams"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      {liveStreams.length === 0 ? (
+      {/* Search Input and Category Filter */}
+      <div className="flex gap-4 mb-8">
+        <div className="relative flex-grow">
+          <Input
+            type="text"
+            placeholder="Search for products or sellers"
+            className="pl-10 pr-4 py-2 w-full"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <Search
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            size={20}
+          />
+        </div>
+        <Select
+          value={selectedCategory}
+          onValueChange={(value) => setSelectedCategory(value)}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select a category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {categories.map((category) => (
+              <SelectItem key={category} value={category}>
+                {category}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Conditional rendering for loading and live streams */}
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-pulse flex flex-col items-center">
+            <div className="h-12 w-12 rounded-full bg-black mb-4"></div>
+            <div className="h-4 w-32 bg-black rounded"></div>
+          </div>
+        </div>
+      ) : liveStreams.length === 0 ? (
         <div className="text-center py-20">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-black mb-4">
             <Play className="h-8 w-8 text-gray-400" />
@@ -145,16 +325,6 @@ function StreamCard({ stream }: { stream: Stream }) {
             LIVE
           </Badge>
         </div>
-
-        {/* <div className="absolute top-3 right-3 z-10">
-          <Badge
-            variant="secondary"
-            className="bg-black/70 text-white flex items-center gap-1"
-          >
-            <Users className="h-3 w-3" />
-            {stream.viewerCount}
-          </Badge>
-        </div> */}
       </div>
 
       <CardContent className="p-4">
@@ -169,10 +339,6 @@ function StreamCard({ stream }: { stream: Stream }) {
             </Avatar>
             <span className="text-sm text-gray-600">{stream.sellerName}</span>
           </div>
-          {/* <div className="flex items-center text-xs text-gray-500">
-            <Clock className="h-3 w-3 mr-1" />
-            {getTimeSince(stream.startedAt || "")}
-          </div> */}
         </div>
       </CardContent>
 
@@ -180,17 +346,6 @@ function StreamCard({ stream }: { stream: Stream }) {
         <span className="text-xs text-gray-500">
           {stream.products.length} products
         </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-xs font-medium hover:bg-black"
-          onClick={(e) => {
-            e.stopPropagation();
-            router.push(`/seller/stream/${stream._id}`);
-          }}
-        >
-          Watch Now
-        </Button>
       </CardFooter>
     </Card>
   );
@@ -205,16 +360,28 @@ function ImageSlider({
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const allImages = [thumbnail, ...images.filter((img) => img !== thumbnail)];
 
-  // Auto-slide functionality
+  // Filter out the thumbnail from product images if it exists in the array
+  const productImages = images.filter((img) => img !== thumbnail && img);
+
+  // Reset index when hover state changes
   useEffect(() => {
-    if (isHovered && allImages.length > 1) {
+    setCurrentIndex(0);
+
+    // Clear any existing interval when hover state changes
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, [isHovered]);
+
+  // Auto-slide functionality - only when hovering
+  useEffect(() => {
+    if (isHovered && productImages.length > 1) {
       intervalRef.current = setInterval(() => {
-        setCurrentIndex((prevIndex) => (prevIndex + 1) % allImages.length);
-      }, 3000); // Change image every 2 seconds
+        setCurrentIndex((prevIndex) => (prevIndex + 1) % productImages.length);
+      }, 3000);
     }
 
     return () => {
@@ -223,24 +390,25 @@ function ImageSlider({
         intervalRef.current = null;
       }
     };
-  }, [isHovered, allImages.length]);
+  }, [isHovered, productImages.length]);
 
   const handlePrev = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
       setCurrentIndex(
-        (prevIndex) => (prevIndex - 1 + allImages.length) % allImages.length
+        (prevIndex) =>
+          (prevIndex - 1 + productImages.length) % productImages.length
       );
     },
-    [allImages.length]
+    [productImages.length]
   );
 
   const handleNext = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % allImages.length);
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % productImages.length);
     },
-    [allImages.length]
+    [productImages.length]
   );
 
   return (
@@ -249,29 +417,45 @@ function ImageSlider({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="relative w-full h-full">
-        {allImages.map((src, index) => (
-          <div
-            key={index}
-            className={`absolute inset-0 transition-opacity duration-500 ${
-              currentIndex === index ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <Image
-              src={src || "/placeholder.svg"}
-              alt={`Stream image ${index}`}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-            />
-          </div>
-        ))}
-      </div>
+      {/* Show thumbnail when not hovering */}
+      {!isHovered && (
+        <div className="absolute inset-0">
+          <Image
+            src={thumbnail || "/placeholder.svg"}
+            alt="Stream thumbnail"
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          />
+        </div>
+      )}
 
-      {/* Image indicators */}
-      {isHovered && allImages.length > 1 && (
+      {/* Show product images when hovering */}
+      {isHovered && productImages.length > 0 && (
+        <div className="relative w-full h-full">
+          {productImages.map((src, index) => (
+            <div
+              key={index}
+              className={`absolute inset-0 transition-opacity duration-500 ${
+                currentIndex === index ? "opacity-100" : "opacity-0"
+              }`}
+            >
+              <Image
+                src={src || "/placeholder.svg"}
+                alt={`Product image ${index + 1}`}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Image indicators - only show when hovering and there are multiple product images */}
+      {isHovered && productImages.length > 1 && (
         <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1 z-10">
-          {allImages.map((_, index) => (
+          {productImages.map((_, index) => (
             <button
               key={index}
               className={`h-1.5 rounded-full transition-all ${
@@ -281,19 +465,19 @@ function ImageSlider({
                 e.stopPropagation();
                 setCurrentIndex(index);
               }}
-              aria-label={`Go to image ${index + 1}`}
+              aria-label={`Go to product image ${index + 1}`}
             />
           ))}
         </div>
       )}
 
-      {/* Navigation controls - only show on hover */}
-      {isHovered && allImages.length > 1 && (
+      {/* Navigation controls - only show when hovering and there are multiple product images */}
+      {isHovered && productImages.length > 1 && (
         <>
           <Button
             variant="ghost"
             size="icon"
-            className="absolute left-2 top-1/2 transform -translate-y-1/2 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white hover:bg-black hover:text-black transition-all h-8 w-8"
+            className="absolute left-2 top-1/2 transform -translate-y-1/2 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white hover:bg-white hover:text-black transition-all h-8 w-8"
             onClick={handlePrev}
           >
             <ChevronLeft className="h-4 w-4" />
@@ -301,7 +485,7 @@ function ImageSlider({
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white hover:bg-black hover:text-black transition-all h-8 w-8"
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white hover:bg-white hover:text-black transition-all h-8 w-8"
             onClick={handleNext}
           >
             <ChevronRight className="h-4 w-4" />

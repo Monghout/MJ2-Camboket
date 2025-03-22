@@ -28,7 +28,7 @@ interface EditStreamFormProps {
     description: string;
     category: string;
     products: {
-      title: string;
+      name: string;
       image: string;
       price: number;
       description: string;
@@ -73,7 +73,7 @@ export default function EditStreamForm({
   const handleProductUpdate = (
     index: number,
     updatedProduct: {
-      title: string;
+      name: string;
       image: string;
       price: number;
       description: string;
@@ -117,7 +117,7 @@ export default function EditStreamForm({
   const addNewProduct = () => {
     setProducts([
       ...products,
-      { title: "", image: "", price: 0, description: "", feature: false },
+      { name: "", image: "", price: 0, description: "", feature: false },
     ]);
   };
 
