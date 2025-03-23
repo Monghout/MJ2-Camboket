@@ -1,4 +1,4 @@
-// app/api/streamChat/token/route.ts
+// /app/api/streamChat/token/route.ts
 import { NextResponse } from "next/server";
 import { StreamChat } from "stream-chat";
 

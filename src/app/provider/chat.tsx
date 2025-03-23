@@ -1,18 +1,15 @@
-// src/app/provider/chat.tsx
 "use client";
-
 import { StreamChat } from "stream-chat";
 import { Chat } from "stream-chat-react";
-import { useEffect, useState } from "react";
-import "stream-chat-react/dist/css/v2/index.css"; // For new UI v2
+import { createContext, useContext, useEffect, useState } from "react";
 
-type ChatProviderProps = {
-  children: React.ReactNode;
-  apiKey: string;
-  userId: string;
-  userName: string;
-  userToken: string;
+type ChatContextType = {
+  selectedChannel: any;
+  setSelectedChannel: (channel: any) => void;
 };
+
+const ChatSelectionContext = createContext<ChatContextType | null>(null);
+export const useChatSelection = () => useContext(ChatSelectionContext)!;
 
 export function StreamChatProvider({
   children,
@@ -20,37 +17,35 @@ export function StreamChatProvider({
   userId,
   userName,
   userToken,
-}: ChatProviderProps) {
+}: {
+  children: React.ReactNode;
+  apiKey: string;
+  userId: string;
+  userName: string;
+  userToken: string;
+}) {
   const [chatClient, setChatClient] = useState<StreamChat | null>(null);
+  const [selectedChannel, setSelectedChannel] = useState<any>(null);
 
   useEffect(() => {
     const client = StreamChat.getInstance(apiKey);
-
     const connect = async () => {
-      try {
-        await client.connectUser(
-          {
-            id: userId,
-            name: userName,
-          },
-          userToken
-        );
-        setChatClient(client);
-      } catch (error) {
-        console.error("Failed to connect user to chat client:", error);
-      }
+      await client.connectUser({ id: userId, name: userName }, userToken);
+      setChatClient(client);
     };
-
     connect();
-
     return () => {
-      if (chatClient) {
-        chatClient.disconnectUser();
-      }
+      chatClient?.disconnectUser();
     };
   }, [apiKey, userId, userName, userToken]);
 
-  if (!chatClient) return <div>Loading chat...</div>; // Show loading state if chat client is not available
+  if (!chatClient) return <div>Loading chat...</div>;
 
-  return <Chat client={chatClient}>{children}</Chat>;
+  return (
+    <ChatSelectionContext.Provider
+      value={{ selectedChannel, setSelectedChannel }}
+    >
+      <Chat client={chatClient}>{children}</Chat>
+    </ChatSelectionContext.Provider>
+  );
 }

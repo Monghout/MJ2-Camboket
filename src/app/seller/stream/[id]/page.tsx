@@ -14,10 +14,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Copy, WifiOff } from "lucide-react";
 import { toast } from "sonner";
-import Header from "@/app/component/header";
 import Link from "next/link";
 import ChatComponent from "@/app/component/chatComponent";
-import { DevToken } from "stream-chat";
+import StreamerChatComponent from "@/app/component/streamerChatComponent";
+
+// Get the Stream Chat API key from environment variables
+const apiKey = process.env.NEXT_PUBLIC_STREAM_CHAT_API_KEY!;
 
 export default function StreamPage() {
   const { id } = useParams();
@@ -29,8 +31,7 @@ export default function StreamPage() {
   const [isCopyDisabled, setIsCopyDisabled] = useState(false);
   const [muxStreams, setMuxStreams] = useState<any[]>([]);
   const [playerKey, setPlayerKey] = useState(0);
-  const [followLoading, setFollowLoading] = useState(false);
-  const [userToken, setUserToken] = useState<string | null>(null);
+  const [userToken, setUserToken] = useState<string | null>(null); // State for Stream Chat token
   const intervalRefs = useRef<{
     status: NodeJS.Timeout | null;
     player: NodeJS.Timeout | null;
@@ -38,6 +39,25 @@ export default function StreamPage() {
     status: null,
     player: null,
   });
+
+  // Fetch Stream Chat token
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchToken = async () => {
+      try {
+        const response = await fetch(`/api/streamChat/token?userId=${user.id}`);
+        if (!response.ok) throw new Error("Failed to fetch token");
+
+        const { token } = await response.json();
+        setUserToken(token);
+      } catch (error) {
+        console.error("Error fetching Stream Chat token:", error);
+      }
+    };
+
+    fetchToken();
+  }, [user]);
 
   // Combined fetch functions
   const fetchData = async () => {
@@ -53,20 +73,10 @@ export default function StreamPage() {
           );
 
           const muxStatus = matchedStream?.status;
-          const shouldBeLive = muxStatus;
+          const shouldBeLive = muxStatus === "active";
 
           if (stream.isLive !== shouldBeLive) {
             console.log("📤 Syncing to MongoDB...");
-
-            // const updateResponse = await fetch(`/api/live/${id}/status`, {
-            //   method: "PATCH",
-            //   headers: { "Content-Type": "application/json" },
-            //   body: JSON.stringify({ isLive: shouldBeLive }),
-            // });
-
-            // const updateData = await updateResponse.json();
-            // console.log("✅ MongoDB response:", updateData);
-
             setStream((prev: any) => ({ ...prev, isLive: shouldBeLive }));
           }
         }
@@ -95,7 +105,7 @@ export default function StreamPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: user.id, // Clerk user ID
+          userId: user.id,
           action,
         }),
       });
@@ -119,7 +129,7 @@ export default function StreamPage() {
     fetchData();
 
     // Set up status refresh interval
-    intervalRefs.current.status = setInterval(fetchData, 2000);
+    intervalRefs.current.status = setInterval(fetchData, 10000); // Changed to 10 seconds to reduce API load
 
     // Initial stream data fetch
     if (id) fetchStreamData();
@@ -143,21 +153,14 @@ export default function StreamPage() {
       setSeller(data.seller);
 
       // Check if the current logged-in user is following the stream or not
-      const isUserFollowing = data.stream.followers.some(
-        (f: any) => f.followerId === user?.id
-      );
-      setIsFollowing(isUserFollowing); // Update follow status
-
-      // If user is not the seller, grab their clerkId and fullName
-      if (user?.id !== data.seller.clerkId) {
-        const userDetails = {
-          clerkId: user?.id,
-          fullName: user?.fullName,
-        };
-        console.log("Logged in user details:", userDetails);
+      if (user) {
+        const isUserFollowing =
+          data.stream.followers?.some((f: any) => f.followerId === user.id) ||
+          false;
+        setIsFollowing(isUserFollowing);
       }
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching stream data:", error);
     } finally {
       setLoading(false);
     }
@@ -165,10 +168,10 @@ export default function StreamPage() {
 
   // Copy stream key
   const handleCopyStreamKey = async () => {
-    if (isCopyDisabled) return;
+    if (isCopyDisabled || !stream?.streamKey) return;
     try {
       await navigator.clipboard.writeText(stream.streamKey);
-      toast.success("Copied!");
+      toast.success("Stream key copied to clipboard!");
       setIsCopyDisabled(true);
       setTimeout(() => setIsCopyDisabled(false), 2000);
     } catch (error) {
@@ -193,7 +196,7 @@ export default function StreamPage() {
 
       if (!response.ok) throw new Error("Failed to remove product");
 
-      setStream((prevStream: { products: any[] }) => ({
+      setStream((prevStream: any) => ({
         ...prevStream,
         products: prevStream.products.filter(
           (product: any) => product._id !== productId
@@ -216,9 +219,9 @@ export default function StreamPage() {
   );
   const isLive = matchedStream?.status === "active";
 
+  // Only render the stream page content if we have all required data
   return (
     <div>
-      {" "}
       <div className="flex justify-center items-center p-2">
         <Link href="/" passHref>
           <img
@@ -228,7 +231,7 @@ export default function StreamPage() {
           />
         </Link>
       </div>
-      <div className="flex justify-center items-center p-2 ">
+      <div className="flex justify-center items-center p-2">
         _________________________________________________________________________________
       </div>
       <div className="dark bg-background min-h-screen p-4 md:p-8">
@@ -254,7 +257,6 @@ export default function StreamPage() {
                 </div>
               )}
             </div>
-
             {matchedStream && (
               <div className="mt-4">
                 <p className="text-sm text-muted-foreground">
@@ -264,14 +266,41 @@ export default function StreamPage() {
                       isLive ? "text-green-500" : "text-red-500"
                     }`}
                   >
-                    {matchedStream.status}
+                    {isLive ? "Live" : "Offline"}
                   </span>
                 </p>
               </div>
             )}
-            <div className="">
-              <ChatComponent streamerId={seller.clerkId} stream={stream} />
-            </div>
+            {/* Wrap the chat component with the provider, but only if user is authenticated */}
+
+            {user ? (
+              <StreamChatProvider
+                apiKey={apiKey}
+                userId={user.id}
+                userName={user.fullName || user.username || "Anonymous"}
+                userToken={userToken!}
+              >
+                {isSeller ? (
+                  <StreamerChatComponent
+                    streamerId={seller.clerkId}
+                    stream={stream}
+                  />
+                ) : (
+                  <ChatComponent
+                    streamerId={seller.clerkId}
+                    stream={stream}
+                    isStreamer={false}
+                  />
+                )}
+              </StreamChatProvider>
+            ) : (
+              <div className="bg-gray-900/40 p-6 rounded-lg text-center">
+                <p className="text-white">Please sign in to join the chat</p>
+                <Button className="mt-4">
+                  <Link href="/sign-in">Sign In</Link>
+                </Button>
+              </div>
+            )}
             <StreamDetails
               title={stream.title}
               description={stream.description}
@@ -281,7 +310,6 @@ export default function StreamPage() {
               isSeller={isSeller}
               onRemoveProduct={handleRemoveProduct}
             />
-
             {isSeller && (
               <div className="space-y-2">
                 <Label>Stream Key</Label>
@@ -306,7 +334,6 @@ export default function StreamPage() {
                 </p>
               </div>
             )}
-
             {isSeller && (
               <div className="pt-4">
                 <EditStreamForm stream={stream} onUpdate={setStream} />
@@ -320,12 +347,15 @@ export default function StreamPage() {
                 stream.followers?.map((f: any) => f.followerName) || []
               }
             />
-            {isBuyer && (
-              <Button onClick={handleFollowToggle}>
+            {isBuyer && user && (
+              <Button
+                onClick={handleFollowToggle}
+                className={isFollowing ? "bg-red-500 hover:bg-red-600" : ""}
+              >
                 {isFollowing ? "Unfollow" : "Follow"}
               </Button>
             )}
-            {stream.products.length > 0 && (
+            {stream.products?.length > 0 && (
               <FeaturedProducts products={stream.products} />
             )}
           </div>
