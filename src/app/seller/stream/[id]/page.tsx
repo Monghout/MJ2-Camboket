@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import Header from "@/app/component/header";
 import Link from "next/link";
 import ChatComponent from "@/app/component/chatComponent";
+import { DevToken } from "stream-chat";
 
 export default function StreamPage() {
   const { id } = useParams();
@@ -29,6 +30,7 @@ export default function StreamPage() {
   const [muxStreams, setMuxStreams] = useState<any[]>([]);
   const [playerKey, setPlayerKey] = useState(0);
   const [followLoading, setFollowLoading] = useState(false);
+  const [userToken, setUserToken] = useState<string | null>(null);
   const intervalRefs = useRef<{
     status: NodeJS.Timeout | null;
     player: NodeJS.Timeout | null;
@@ -56,14 +58,14 @@ export default function StreamPage() {
           if (stream.isLive !== shouldBeLive) {
             console.log("📤 Syncing to MongoDB...");
 
-            const updateResponse = await fetch(`/api/live/${id}/status`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ isLive: shouldBeLive }),
-            });
+            // const updateResponse = await fetch(`/api/live/${id}/status`, {
+            //   method: "PATCH",
+            //   headers: { "Content-Type": "application/json" },
+            //   body: JSON.stringify({ isLive: shouldBeLive }),
+            // });
 
-            const updateData = await updateResponse.json();
-            console.log("✅ MongoDB response:", updateData);
+            // const updateData = await updateResponse.json();
+            // console.log("✅ MongoDB response:", updateData);
 
             setStream((prev: any) => ({ ...prev, isLive: shouldBeLive }));
           }
@@ -267,7 +269,9 @@ export default function StreamPage() {
                 </p>
               </div>
             )}
-
+            <div className="">
+              <ChatComponent streamerId={seller.clerkId} stream={stream} />
+            </div>
             <StreamDetails
               title={stream.title}
               description={stream.description}
@@ -309,14 +313,13 @@ export default function StreamPage() {
               </div>
             )}
           </div>
-
           <div className="w-full md:w-1/4 space-y-6">
             <SellerInfo
               {...seller}
               followers={
                 stream.followers?.map((f: any) => f.followerName) || []
               }
-            />{" "}
+            />
             {isBuyer && (
               <Button onClick={handleFollowToggle}>
                 {isFollowing ? "Unfollow" : "Follow"}
@@ -324,26 +327,6 @@ export default function StreamPage() {
             )}
             {stream.products.length > 0 && (
               <FeaturedProducts products={stream.products} />
-            )}
-            {isBuyer && (
-              <div className="pt-4">
-                <h2 className="text-lg font-semibold">Chat with Seller</h2>
-                <ChatComponent
-                  currentUserId={user?.id!}
-                  currentUserName={user?.fullName!}
-                  sellerId={seller?.clerkId!}
-                />
-              </div>
-            )}{" "}
-            {isSeller && (
-              <div className="pt-4">
-                <h2 className="text-lg font-semibold">Chat with Buyer</h2>
-                <ChatComponent
-                  currentUserId={user?.id!}
-                  currentUserName={user?.fullName!}
-                  sellerId={seller?.clerkId!}
-                />
-              </div>
             )}
           </div>
         </div>

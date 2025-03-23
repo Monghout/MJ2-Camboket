@@ -1,45 +1,56 @@
+// src/app/provider/chat.tsx
 "use client";
 
-import React, { createContext, useContext, ReactNode } from "react";
 import { StreamChat } from "stream-chat";
+import { Chat } from "stream-chat-react";
+import { useEffect, useState } from "react";
+import "stream-chat-react/dist/css/v2/index.css"; // For new UI v2
 
-interface StreamChatContextType {
-  chatClient: StreamChat | null;
-}
+type ChatProviderProps = {
+  children: React.ReactNode;
+  apiKey: string;
+  userId: string;
+  userName: string;
+  userToken: string;
+};
 
-const StreamChatContext = createContext<StreamChatContextType>({
-  chatClient: null,
-});
-
-export const useStreamChat = () => useContext(StreamChatContext);
-
-interface StreamChatProviderProps {
-  children: ReactNode;
-}
-
-export const StreamChatProvider: React.FC<StreamChatProviderProps> = ({
+export function StreamChatProvider({
   children,
-}) => {
-  const [chatClient, setChatClient] = React.useState<StreamChat | null>(null);
+  apiKey,
+  userId,
+  userName,
+  userToken,
+}: ChatProviderProps) {
+  const [chatClient, setChatClient] = useState<StreamChat | null>(null);
 
-  React.useEffect(() => {
-    // Initialize Stream Chat client
-    const client = new StreamChat("37a6hrs66ta2");
-    setChatClient(client);
+  useEffect(() => {
+    const client = StreamChat.getInstance(apiKey);
 
-    // Cleanup function
-    return () => {
-      if (client) {
-        client.disconnectUser().then(() => {
-          console.log("User disconnected");
-        });
+    const connect = async () => {
+      try {
+        await client.connectUser(
+          {
+            id: userId,
+            name: userName,
+          },
+          userToken
+        );
+        setChatClient(client);
+      } catch (error) {
+        console.error("Failed to connect user to chat client:", error);
       }
     };
-  }, []);
 
-  return (
-    <StreamChatContext.Provider value={{ chatClient }}>
-      {children}
-    </StreamChatContext.Provider>
-  );
-};
+    connect();
+
+    return () => {
+      if (chatClient) {
+        chatClient.disconnectUser();
+      }
+    };
+  }, [apiKey, userId, userName, userToken]);
+
+  if (!chatClient) return <div>Loading chat...</div>; // Show loading state if chat client is not available
+
+  return <Chat client={chatClient}>{children}</Chat>;
+}

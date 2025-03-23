@@ -251,7 +251,7 @@ export default function LiveStreamsPage() {
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
             {categories.map((category) => (
-              <SelectItem key={category} value={category}>
+              <SelectItem key={category} value={category!}>
                 {category}
               </SelectItem>
             ))}
