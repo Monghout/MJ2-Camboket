@@ -102,8 +102,20 @@ const StreamerChatComponent = ({
     };
   }, [user, streamerId]);
 
-  // Function to remove a channel from the list
-  const removeChannel = (channelId: string) => {
+  // Function to remove a channel from the list and archive it
+  const removeChannel = async (channelId: string) => {
+    const channelToRemove = channels.find((ch) => ch.id === channelId);
+    if (channelToRemove) {
+      try {
+        // Archive the channel
+        await channelToRemove.stopWatching(); // Stop watching the channel
+        await channelToRemove.hide(); // Hide the channel from queries
+      } catch (error) {
+        console.error("Error archiving channel:", error);
+      }
+    }
+
+    // Update the UI
     setChannels((prevChannels) =>
       prevChannels.filter((ch) => ch.id !== channelId)
     );
@@ -112,6 +124,13 @@ const StreamerChatComponent = ({
     if (channel?.id === channelId) {
       setChannel(null);
     }
+  };
+
+  // Function to get the other member's name in the channel
+  const getOtherMemberName = (channel: StreamChannel) => {
+    const members = Object.values(channel.state.members);
+    const otherMember = members.find((member) => member.user_id !== streamerId);
+    return otherMember?.user?.name || "Anonymous";
   };
 
   if (error) {
@@ -143,7 +162,7 @@ const StreamerChatComponent = ({
                 className="text-white truncate flex-1"
                 onClick={() => setChannel(ch)}
               >
-                {ch.id?.replace(`${streamerId}-`, "")} {/* Display viewer ID */}
+                {getOtherMemberName(ch)} {/* Display the other member's name */}
               </p>
               <button
                 className="text-red-500 hover:text-red-700"

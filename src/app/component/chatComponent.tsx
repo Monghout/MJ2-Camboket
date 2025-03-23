@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 import { LoadingSpinner } from "@/app/component/LoadingSpinner";
 import { StreamChat, type Channel as StreamChannel } from "stream-chat";
 import { Card, CardContent } from "@/components/ui/card";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, Check } from "lucide-react"; // Import Check icon for confirmation
 
 const apiKey = process.env.NEXT_PUBLIC_STREAM_CHAT_API_KEY!;
 
@@ -46,6 +46,9 @@ const ChatComponent = ({
   const [channel, setChannel] = useState<StreamChannel | null>(null);
   const [channels, setChannels] = useState<StreamChannel[]>([]); // For streamer's list of channels
   const [error, setError] = useState<string | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
+    new Set()
+  ); // Track selected products
 
   useEffect(() => {
     if (!user) return;
@@ -80,7 +83,6 @@ const ChatComponent = ({
             watch: true,
             state: true,
           });
-          console.log("Fetched Channels:", channels); // Debugging
           setChannels(channels);
 
           // Automatically select the first channel if available
@@ -117,6 +119,53 @@ const ChatComponent = ({
     };
   }, [user, streamerId, isStreamer]);
 
+  // Function to handle product selection
+  const toggleProductSelection = (productId: string) => {
+    setSelectedProducts((prevSelected) => {
+      const newSelected = new Set(prevSelected);
+      if (newSelected.has(productId)) {
+        newSelected.delete(productId); // Deselect if already selected
+      } else {
+        newSelected.add(productId); // Select if not already selected
+      }
+      return newSelected;
+    });
+  };
+
+  // Function to confirm selected products and send them to the chat
+  // Function to confirm selected products and send them to the chat
+  const confirmSelectedProducts = async () => {
+    if (!channel || selectedProducts.size === 0) return;
+
+    // Get the selected products' details
+    const selectedProductDetails = stream?.products
+      .filter((product) => selectedProducts.has(product._id))
+      .map((product) => ({
+        name: product.name,
+        price: product.price,
+        image: product.image || "/placeholder.svg",
+        description: product.description,
+      }));
+
+    if (!selectedProductDetails || selectedProductDetails.length === 0) return;
+
+    // Format the message with product details
+    const messageText = selectedProductDetails
+      .map(
+        (product) =>
+          `**${product.name}** - $${product.price}\n![${product.name}](${product.image})${product.description}`
+      )
+      .join("\n");
+
+    // Send the selected products as a message to the chat
+    await channel.sendMessage({
+      text: `Selected Products:\n${messageText}`,
+    });
+
+    // Clear the selected products
+    setSelectedProducts(new Set());
+  };
+
   if (error) {
     return (
       <div className="text-white bg-red-500/20 p-4 rounded-md">{error}</div>
@@ -126,9 +175,6 @@ const ChatComponent = ({
   if (!chatClient || (!channel && !isStreamer)) {
     return <LoadingSpinner />;
   }
-
-  console.log("Channels State:", channels); // Debugging
-  console.log("Selected Channel:", channel); // Debugging
 
   return (
     <div className="relative h-screen border-10">
@@ -151,10 +197,7 @@ const ChatComponent = ({
                         className={`p-2 hover:bg-gray-700 cursor-pointer ${
                           channel?.id === ch.id ? "bg-gray-700" : ""
                         }`}
-                        onClick={() => {
-                          console.log("Channel Clicked:", ch.id); // Debugging
-                          setChannel(ch);
-                        }}
+                        onClick={() => setChannel(ch)}
                       >
                         <p className="text-white truncate">
                           {ch.id?.replace(`${streamerId}-`, "")}{" "}
@@ -209,7 +252,12 @@ const ChatComponent = ({
                 {stream.products.map((product) => (
                   <Card
                     key={product._id}
-                    className="hover:border-white transition-all duration-300"
+                    className={`hover:border-white transition-all duration-300 ${
+                      selectedProducts.has(product._id)
+                        ? "border-2 border-blue-500"
+                        : ""
+                    }`}
+                    onClick={() => toggleProductSelection(product._id)}
                   >
                     <div className="aspect-video relative">
                       <img
@@ -230,6 +278,15 @@ const ChatComponent = ({
                     </CardContent>
                   </Card>
                 ))}
+                {/* Confirm Button */}
+                <button
+                  className="w-full bg-blue-500 text-white py-2 rounded-md mt-4 flex items-center justify-center"
+                  onClick={confirmSelectedProducts}
+                  disabled={selectedProducts.size === 0}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Confirm Selection
+                </button>
               </div>
             ) : (
               <div className="text-center py-8 text-gray-400">
