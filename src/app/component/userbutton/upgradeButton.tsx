@@ -1,9 +1,6 @@
 "use client";
-import React from "react";
 import { loadStripe } from "@stripe/stripe-js";
-import { useUser } from "@clerk/nextjs";
-import { Badge } from "@/components/ui/badge";
-import { Award } from "lucide-react";
+import type { useUser } from "@clerk/nextjs";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -33,24 +30,19 @@ export default function UpgradeButton({ user }: UpgradeButtonProps) {
   };
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <button
-        onClick={handleCheckout}
-        className="group bg-white dark:bg-gray-800 hover:shadow-xl px-8 py-6 rounded-xl w-full transition-all duration-300 border border-gray-200 dark:border-gray-700 hover:-translate-y-1"
-      >
-        <div className="flex flex-col items-center gap-3">
-          <Badge className="bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-            Premium
-          </Badge>
-          <span className="text-xl font-bold text-gray-900 dark:text-white">
-            Upgrade to Seller
-          </span>
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <Award className="w-4 h-4 text-primary" />
-            <span className="text-sm">Unlock exclusive features</span>
-          </div>
-        </div>
-      </button>
+    <div className="flex flex-col items-center gap-2 ">
+      <div className="relative group w-full ">
+        {/* Gradient border container */}
+        <div className="absolute  inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 rounded-md opacity-0 group-hover:opacity-100 blur-[2px] group-hover:blur-[1.5px] transition-all duration-300 animate-gradient-x"></div>
+
+        {/* Button with transparent background to show gradient behind */}
+        <button
+          onClick={handleCheckout}
+          className="relative border-1  border-white/50 bg-black dark:bg-gray-800 text-sm hover:shadow-xl px-2 py-2 rounded-md w-full transition-all duration-300 border border-transparent group-hover:border-transparent hover:-translate-y-1 z-10"
+        >
+          Upgrade to Seller
+        </button>
+      </div>
     </div>
   );
 }

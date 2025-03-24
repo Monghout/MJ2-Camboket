@@ -1,4 +1,5 @@
 "use client";
+
 import { useUser } from "@clerk/nextjs";
 import {
   Chat,
@@ -225,6 +226,7 @@ const ChatComponent = ({
                         <Window>
                           <ChannelHeader />
                           <MessageList />
+
                           <MessageInput />
                         </Window>
                         <Thread />
@@ -248,7 +250,7 @@ const ChatComponent = ({
                 </Channel>
               )}
             </Chat>
-          </div>
+          </div>{" "}
         </div>
 
         {/* Product Section (for viewers) */}
@@ -344,7 +346,7 @@ const ChatComponent = ({
             )}
           </div>
         )}
-      </div>
+      </div>{" "}
     </div>
   );
 };

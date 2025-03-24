@@ -13,14 +13,7 @@ export default function Footer() {
               <h3 className="font-semibold text-white">ABOUT</h3>
               <ul className="mt-2 space-y-1">
                 <li>
-                  <a href="#" className="hover:underline">
-                    Camboket
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:underline">
-                    Services
-                  </a>
+                  <a className="hover:underline">Camboket</a>
                 </li>
               </ul>
             </div>
@@ -28,15 +21,14 @@ export default function Footer() {
               <h3 className="font-semibold text-white">FOLLOW US</h3>
               <ul className="mt-2 space-y-1">
                 <li>
-                  <a href="#" className="hover:underline">
+                  <a
+                    href="https://github.com/Monghout"
+                    className="hover:underline"
+                  >
                     Github
                   </a>
                 </li>
-                <li>
-                  <a href="#" className="hover:underline">
-                    Discord
-                  </a>
-                </li>
+                <li></li>
               </ul>
             </div>
             <div>

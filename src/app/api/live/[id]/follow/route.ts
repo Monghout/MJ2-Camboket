@@ -4,12 +4,9 @@ import LiveStream from "@/app/models/LiveStream";
 import User from "@/app/models/User";
 
 // POST: Follow a stream
-export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function POST(req: Request, context: { params: { id: string } }) {
   try {
-    const { id } = params; // Stream ID
+    const { id } = await context.params; // Await params before destructuring
     const { userId } = await req.json(); // Clerk user ID
 
     await connectDB();
@@ -60,10 +57,10 @@ export async function POST(
 // DELETE: Unfollow a stream
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id } = params; // Stream ID
+    const { id } = await context.params; // Await params before destructuring
     const { userId } = await req.json(); // Clerk user ID
 
     await connectDB();

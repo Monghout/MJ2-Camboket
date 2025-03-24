@@ -45,6 +45,7 @@
     "@radix-ui/react-tooltip": "^1.1.7",
     "@stripe/stripe-js": "^5.6.0",
     "@tabler/icons-react": "^3.29.0",
+    "@vis.gl/react-google-maps": "^1.5.2",
     "axios": "^1.8.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -60,9 +61,11 @@
     "mux": "^0.0.2",
     "next": "15.1.6",
     "next-themes": "^0.4.4",
+    "package": "^1.0.1",
     "react": "^19.0.0",
     "react-day-picker": "^8.10.1",
     "react-dom": "^19.0.0",
+    "react-google-maps": "^9.4.5",
     "react-hook-form": "^7.54.2",
     "react-native-web": "^0.19.13",
     "react-resizable-panels": "^2.1.7",
@@ -81,6 +84,7 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
+    "@types/google.maps": "^3.58.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
