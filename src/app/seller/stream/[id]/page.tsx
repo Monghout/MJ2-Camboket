@@ -152,14 +152,15 @@ export default function StreamPage() {
 
     try {
       const action = isFollowing ? "unfollow" : "follow";
+      const method = isFollowing ? "DELETE" : "POST"; // Use DELETE for unfollow, POST for follow
+
       const response = await fetch(`/api/live/${id}/follow`, {
-        method: "POST",
+        method: method,
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           userId: user.id,
-          action,
         }),
       });
 
@@ -168,7 +169,7 @@ export default function StreamPage() {
       // Toggle follow status based on action
       setIsFollowing((prev) => !prev);
 
-      // Show toast notification
+      // Show toast notification based on the action
       toast.success(`You have ${action}ed this stream.`);
     } catch (error) {
       console.error("Error toggling follow status:", error);
