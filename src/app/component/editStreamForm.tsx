@@ -1,5 +1,5 @@
 "use client";
-
+import { Trash } from "lucide-react";
 import { useState } from "react";
 import ProductUpload from "@/app/component/LiveForm/ProductUpload";
 import ThumbnailUpload from "@/app/component/LiveForm/ThumbnailUpload";
@@ -83,6 +83,9 @@ export default function EditStreamForm({
     const updatedProducts = [...products];
     updatedProducts[index] = updatedProduct;
     setProducts(updatedProducts);
+  };
+  const handleRemoveProduct = (indexToRemove: number) => {
+    setProducts((prev) => prev.filter((_, i) => i !== indexToRemove));
   };
 
   // Handle form submission
@@ -224,8 +227,16 @@ export default function EditStreamForm({
 
             <div className="grid grid-cols-1 gap-6">
               {products.map((product, index) => (
-                <Card key={index} className="bg-card/50">
+                <Card key={index} className="bg-card/50 relative">
                   <CardContent className="pt-6">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-1 right-3 text-destructive hover:bg-destructive/10"
+                      onClick={() => handleRemoveProduct(index)}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
                     <ProductUpload
                       product={product}
                       index={index}

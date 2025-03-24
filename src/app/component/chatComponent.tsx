@@ -18,6 +18,14 @@ import { ShoppingBag, Check } from "lucide-react"; // Import Check icon for conf
 
 const apiKey = process.env.NEXT_PUBLIC_STREAM_CHAT_API_KEY!;
 
+interface Product {
+  _id: string;
+  name: string;
+  price: number;
+  image?: string;
+  featured: boolean; // Add a featured field
+}
+
 interface Stream {
   _id: string;
   title: string;
@@ -27,7 +35,7 @@ interface Stream {
   thumbnail?: string;
   sellerId: string;
   sellerName: string;
-  products: any[];
+  products: Product[]; // Use the updated Product interface
 }
 
 interface ChatComponentProps {
@@ -133,7 +141,6 @@ const ChatComponent = ({
   };
 
   // Function to confirm selected products and send them to the chat
-  // Function to confirm selected products and send them to the chat
   const confirmSelectedProducts = async () => {
     if (!channel || selectedProducts.size === 0) return;
 
@@ -144,7 +151,6 @@ const ChatComponent = ({
         name: product.name,
         price: product.price,
         image: product.image || "/placeholder.svg",
-        description: product.description,
       }));
 
     if (!selectedProductDetails || selectedProductDetails.length === 0) return;
@@ -153,7 +159,7 @@ const ChatComponent = ({
     const messageText = selectedProductDetails
       .map(
         (product) =>
-          `**${product.name}** - $${product.price}\n![${product.name}](${product.image})${product.description}`
+          `**${product.name}** - $${product.price}\n![${product.name}](${product.image})`
       )
       .join("\n");
 
@@ -165,6 +171,11 @@ const ChatComponent = ({
     // Clear the selected products
     setSelectedProducts(new Set());
   };
+
+  // Sort products: featured products first, then non-featured
+  const sortedProducts = stream?.products
+    ? [...stream.products].sort((a, b) => (b.featured ? 1 : -1))
+    : [];
 
   if (error) {
     return (
@@ -247,37 +258,74 @@ const ChatComponent = ({
               <ShoppingBag className="h-4 w-4 mr-2" />
               Featured Products
             </h3>
-            {stream?.products && stream.products.length > 0 ? (
+            {sortedProducts.length > 0 ? (
               <div className="space-y-2">
-                {stream.products.map((product) => (
-                  <Card
-                    key={product._id}
-                    className={`hover:border-white transition-all duration-300 ${
-                      selectedProducts.has(product._id)
-                        ? "border-2 border-blue-500"
-                        : ""
-                    }`}
-                    onClick={() => toggleProductSelection(product._id)}
-                  >
-                    <div className="aspect-video relative">
-                      <img
-                        src={product.image || "/placeholder.svg"}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute bottom-0 right-0 p-2">
-                        <div className="bg-emerald-500/90 text-white font-bold px-3 py-1 rounded-full text-xs">
-                          $ {product.price}
+                {/* Featured Products */}
+                {sortedProducts
+                  .filter((product) => product.featured)
+                  .map((product) => (
+                    <Card
+                      key={product._id}
+                      className={`hover:border-white transition-all duration-300 ${
+                        selectedProducts.has(product._id)
+                          ? "border-2 border-blue-500"
+                          : ""
+                      }`}
+                      onClick={() => toggleProductSelection(product._id)}
+                    >
+                      <div className="aspect-video relative">
+                        <img
+                          src={product.image || "/placeholder.svg"}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute bottom-0 right-0 p-2">
+                          <div className="bg-emerald-500/90 text-white font-bold px-3 py-1 rounded-full text-xs">
+                            $ {product.price}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <CardContent className="p-3">
-                      <h3 className="font-medium truncate text-white">
-                        {product.name}
-                      </h3>
-                    </CardContent>
-                  </Card>
-                ))}
+                      <CardContent className="p-3">
+                        <h3 className="font-medium truncate text-white">
+                          {product.name}
+                        </h3>
+                      </CardContent>
+                    </Card>
+                  ))}
+
+                {/* Non-Featured Products */}
+                {sortedProducts
+                  .filter((product) => !product.featured)
+                  .map((product) => (
+                    <Card
+                      key={product._id}
+                      className={`hover:border-white transition-all duration-300 ${
+                        selectedProducts.has(product._id)
+                          ? "border-2 border-blue-500"
+                          : ""
+                      }`}
+                      onClick={() => toggleProductSelection(product._id)}
+                    >
+                      <div className="aspect-video relative">
+                        <img
+                          src={product.image || "/placeholder.svg"}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute bottom-0 right-0 p-2">
+                          <div className="bg-emerald-500/90 text-white font-bold px-3 py-1 rounded-full text-xs">
+                            $ {product.price}
+                          </div>
+                        </div>
+                      </div>
+                      <CardContent className="p-3">
+                        <h3 className="font-medium truncate text-white">
+                          {product.name}
+                        </h3>
+                      </CardContent>
+                    </Card>
+                  ))}
+
                 {/* Confirm Button */}
                 <button
                   className="w-full bg-blue-500 text-white py-2 rounded-md mt-4 flex items-center justify-center"

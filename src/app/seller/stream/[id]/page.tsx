@@ -1,29 +1,36 @@
 "use client";
-import { StreamChatProvider } from "@/app/provider/chat";
-import { notFound, useParams } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
+import { notFound, useParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
+import Link from "next/link";
+import { toast } from "sonner";
+import { Copy, WifiOff } from "lucide-react";
+
+// Components
+import { StreamChatProvider } from "@/app/provider/chat";
 import LoadingSkeleton from "@/app/component/liveDisplay-Component/skeletonLoading";
 import StreamPlayerCard from "@/app/component/liveDisplay-Component/StreamPlayerCard";
 import StreamDetails from "@/app/component/livePage/StreamDetails";
 import EditStreamForm from "@/app/component/editStreamForm";
 import SellerInfo from "@/app/component/livePage/SellerInfo";
 import FeaturedProducts from "@/app/component/livePage/FeaturedProducts";
+import ChatComponent from "@/app/component/chatComponent";
+import StreamerChatComponent from "@/app/component/streamerChatComponent";
+
+// UI Components
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, WifiOff } from "lucide-react";
-import { toast } from "sonner";
-import Link from "next/link";
-import ChatComponent from "@/app/component/chatComponent";
-import StreamerChatComponent from "@/app/component/streamerChatComponent";
 
 // Get the Stream Chat API key from environment variables
 const apiKey = process.env.NEXT_PUBLIC_STREAM_CHAT_API_KEY!;
 
 export default function StreamPage() {
+  // Params and user
   const { id } = useParams();
   const { user } = useUser();
+
+  // State
   const [stream, setStream] = useState<any>(null);
   const [seller, setSeller] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -31,7 +38,9 @@ export default function StreamPage() {
   const [isCopyDisabled, setIsCopyDisabled] = useState(false);
   const [muxStreams, setMuxStreams] = useState<any[]>([]);
   const [playerKey, setPlayerKey] = useState(0);
-  const [userToken, setUserToken] = useState<string | null>(null); // State for Stream Chat token
+  const [userToken, setUserToken] = useState<string | null>(null);
+
+  // Refs
   const intervalRefs = useRef<{
     status: NodeJS.Timeout | null;
     player: NodeJS.Timeout | null;
@@ -59,7 +68,31 @@ export default function StreamPage() {
     fetchToken();
   }, [user]);
 
-  // Combined fetch functions
+  // Fetch stream data
+  const fetchStreamData = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/live/${id}`);
+      if (!response.ok) throw new Error("Stream not found");
+      const data = await response.json();
+      setStream(data.stream);
+      setSeller(data.seller);
+
+      // Check if the current logged-in user is following the stream or not
+      if (user) {
+        const isUserFollowing =
+          data.stream.followers?.some((f: any) => f.followerId === user.id) ||
+          false;
+        setIsFollowing(isUserFollowing);
+      }
+    } catch (error) {
+      console.error("Error fetching stream data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch Mux streams data
   const fetchData = async () => {
     try {
       const response = await fetch("/api/mux");
@@ -89,6 +122,26 @@ export default function StreamPage() {
       fetchStreamData();
     }
   };
+
+  // Set up intervals for data fetching
+  useEffect(() => {
+    // Initial fetch
+    fetchData();
+
+    // Set up status refresh interval
+    intervalRefs.current.status = setInterval(fetchData, 10000); // Changed to 10 seconds to reduce API load
+
+    // Initial stream data fetch
+    if (id) fetchStreamData();
+
+    // Cleanup all intervals on unmount
+    return () => {
+      if (intervalRefs.current.status)
+        clearInterval(intervalRefs.current.status);
+      if (intervalRefs.current.player)
+        clearInterval(intervalRefs.current.player);
+    };
+  }, [id, user?.id]);
 
   // Handle follow/unfollow action
   const handleFollowToggle = async () => {
@@ -120,49 +173,6 @@ export default function StreamPage() {
     } catch (error) {
       console.error("Error toggling follow status:", error);
       toast.error("Failed to update follow status.");
-    }
-  };
-
-  // Combined useEffect for all intervals
-  useEffect(() => {
-    // Initial fetch
-    fetchData();
-
-    // Set up status refresh interval
-    intervalRefs.current.status = setInterval(fetchData, 10000); // Changed to 10 seconds to reduce API load
-
-    // Initial stream data fetch
-    if (id) fetchStreamData();
-
-    // Cleanup all intervals on unmount
-    return () => {
-      if (intervalRefs.current.status)
-        clearInterval(intervalRefs.current.status);
-      if (intervalRefs.current.player)
-        clearInterval(intervalRefs.current.player);
-    };
-  }, [id, user?.id]);
-
-  const fetchStreamData = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/live/${id}`);
-      if (!response.ok) throw new Error("Stream not found");
-      const data = await response.json();
-      setStream(data.stream);
-      setSeller(data.seller);
-
-      // Check if the current logged-in user is following the stream or not
-      if (user) {
-        const isUserFollowing =
-          data.stream.followers?.some((f: any) => f.followerId === user.id) ||
-          false;
-        setIsFollowing(isUserFollowing);
-      }
-    } catch (error) {
-      console.error("Error fetching stream data:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -209,9 +219,11 @@ export default function StreamPage() {
     }
   };
 
+  // Loading and error states
   if (loading) return <LoadingSkeleton />;
   if (!stream) return notFound();
 
+  // Derived state
   const isSeller = user?.id === seller?.clerkId;
   const isBuyer = user?.id !== seller?.clerkId;
   const matchedStream = muxStreams.find(
@@ -219,9 +231,9 @@ export default function StreamPage() {
   );
   const isLive = matchedStream?.status === "active";
 
-  // Only render the stream page content if we have all required data
   return (
     <div>
+      {/* Header */}
       <div className="flex justify-center items-center p-2">
         <Link href="/" passHref>
           <img
@@ -234,10 +246,13 @@ export default function StreamPage() {
       <div className="flex justify-center items-center p-2">
         _________________________________________________________________________________
       </div>
+
+      {/* Main Content */}
       <div className="dark bg-background min-h-screen p-4 md:p-8">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6">
+          {/* Main Column */}
           <div className="flex-1 space-y-6">
-            {/* Player container with relative positioning */}
+            {/* Stream Player */}
             <div className="relative">
               <StreamPlayerCard
                 key={playerKey}
@@ -246,7 +261,7 @@ export default function StreamPage() {
                 liveStreamId={stream}
               />
 
-              {/* Black overlay when stream is offline */}
+              {/* Offline Overlay */}
               {!isLive && (
                 <div className="absolute inset-0 bg-black flex flex-col items-center justify-center text-white">
                   <WifiOff className="h-12 w-12 mb-2 text-red-500" />
@@ -257,6 +272,8 @@ export default function StreamPage() {
                 </div>
               )}
             </div>
+
+            {/* Stream Status */}
             {matchedStream && (
               <div className="mt-4">
                 <p className="text-sm text-muted-foreground">
@@ -271,8 +288,8 @@ export default function StreamPage() {
                 </p>
               </div>
             )}
-            {/* Wrap the chat component with the provider, but only if user is authenticated */}
 
+            {/* Chat Component */}
             {user ? (
               <StreamChatProvider
                 apiKey={apiKey}
@@ -301,6 +318,8 @@ export default function StreamPage() {
                 </Button>
               </div>
             )}
+
+            {/* Stream Details */}
             <StreamDetails
               title={stream.title}
               description={stream.description}
@@ -310,43 +329,54 @@ export default function StreamPage() {
               isSeller={isSeller}
               onRemoveProduct={handleRemoveProduct}
             />
+
+            {/* Seller Controls */}
             {isSeller && (
-              <div className="space-y-2">
-                <Label>Stream Key</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={stream.streamKey}
-                    readOnly
-                    className="bg-muted/50 flex-1"
-                  />
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    onClick={handleCopyStreamKey}
-                    disabled={isCopyDisabled}
-                    aria-label="Copy stream key"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+              <>
+                {/* Stream Key */}
+                <div className="space-y-2">
+                  <Label>Stream Key</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={stream.streamKey}
+                      readOnly
+                      className="bg-muted/50 flex-1"
+                    />
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={handleCopyStreamKey}
+                      disabled={isCopyDisabled}
+                      aria-label="Copy stream key"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Use this key to configure your streaming software (e.g.,
+                    OBS).
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Use this key to configure your streaming software (e.g., OBS).
-                </p>
-              </div>
-            )}
-            {isSeller && (
-              <div className="pt-4">
-                <EditStreamForm stream={stream} onUpdate={setStream} />
-              </div>
+
+                {/* Edit Stream Form */}
+                <div className="pt-4">
+                  <EditStreamForm stream={stream} onUpdate={setStream} />
+                </div>
+              </>
             )}
           </div>
+
+          {/* Sidebar */}
           <div className="w-full md:w-1/4 space-y-6">
+            {/* Seller Info */}
             <SellerInfo
               {...seller}
               followers={
                 stream.followers?.map((f: any) => f.followerName) || []
               }
             />
+
+            {/* Follow Button */}
             {isBuyer && user && (
               <Button
                 onClick={handleFollowToggle}
@@ -355,6 +385,8 @@ export default function StreamPage() {
                 {isFollowing ? "Unfollow" : "Follow"}
               </Button>
             )}
+
+            {/* Featured Products */}
             {stream.products?.length > 0 && (
               <FeaturedProducts products={stream.products} />
             )}

@@ -34,7 +34,7 @@ export async function DELETE(
     );
 
     // Save the updated stream
-    await stream.save();
+    await stream.save({ validateBeforeSave: false });
 
     return NextResponse.json({ message: "Product removed successfully" });
   } catch (error) {
