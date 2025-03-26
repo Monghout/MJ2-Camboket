@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import SellersPanel from "../component/seller_panel";
-import ProductShowcase from "../component/product_showcase";
+import SellersPanel from "./seller_panel";
+import ProductShowcase from "./product_showcase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import CompareUserAndSellerIds from "./userCompare";
 import StreamIdDisplay from "./userCompare";
 import LiveStreamsPage from "./LiveStreamsPage";
 import Carousal from "./carousal";
+import { SignedIn, SignedOut } from "@clerk/nextjs";
 
 // import LiveStreamsPage from "./LiveStreamsPage";
 
@@ -31,16 +32,9 @@ export default function LandingPage() {
     <div className="container text-white mx-auto px-4 py-8">
       <div className="flex gap-4 mb-8">
         <Carousal />
+
         {/* Featured Section with separated components */}
       </div>
-      {/* Search and Filter */}
-
-      {/* Live Stream Placeholders */}
-
-      {/* <div className="p-8">
-        <h1 className="text-2xl font-bold mb-6">Stream Information</h1>
-        <StreamIdDisplay />
-      </div> */}
       <LiveStreamsPage />
     </div>
   );

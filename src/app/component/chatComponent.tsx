@@ -1,5 +1,4 @@
 "use client";
-
 import { useUser } from "@clerk/nextjs";
 import {
   Chat,
@@ -226,7 +225,6 @@ const ChatComponent = ({
                         <Window>
                           <ChannelHeader />
                           <MessageList />
-
                           <MessageInput />
                         </Window>
                         <Thread />
@@ -250,7 +248,7 @@ const ChatComponent = ({
                 </Channel>
               )}
             </Chat>
-          </div>{" "}
+          </div>
         </div>
 
         {/* Product Section (for viewers) */}
@@ -258,7 +256,7 @@ const ChatComponent = ({
           <div className="w-1/4 backdrop-blur-sm p-4 overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4 text-white flex items-center">
               <ShoppingBag className="h-4 w-4 mr-2" />
-              Featured Products
+              All Product
             </h3>
             {sortedProducts.length > 0 ? (
               <div className="space-y-2">
@@ -346,7 +344,7 @@ const ChatComponent = ({
             )}
           </div>
         )}
-      </div>{" "}
+      </div>
     </div>
   );
 };

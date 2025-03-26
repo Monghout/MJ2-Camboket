@@ -37,7 +37,7 @@ export default function Header() {
           {user ? (
             <UserButton afterSignOutUrl="/" />
           ) : (
-            <div className="px-6 py-3 bg-blue-500 text-white text-lg rounded-lg hover:bg-blue-600 transition">
+            <div className="px-4 py-2 bg-black border-white border-2  text-white text-md rounded-lg hover:bg-white hover:text-black transition">
               <SignInButton mode="modal" />
             </div>
           )}

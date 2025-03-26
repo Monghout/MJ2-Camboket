@@ -13,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Pause, Play } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { SignInButton } from "@clerk/nextjs";
+
 interface Seller {
   _id: string;
   clerkId: string;
@@ -48,7 +50,8 @@ export default function FeaturedSection() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  // Carousel auto-scroll state
+
+  // Carousel state
   const [api, setApi] = useState<CarouselApi>();
   const [isPaused, setIsPaused] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -98,39 +101,44 @@ export default function FeaturedSection() {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-
     setIsPaused(!isPaused);
   };
 
+  // Only fetch data if user is signed in
   useEffect(() => {
     if (!isLoaded) {
-      return; // Don't proceed if user data is still loading
+      setLoading(false);
+      return;
     }
 
     const fetchData = async () => {
       try {
         setLoading(true);
+        setError(null);
 
-        // Fetch users and filter sellers
-        const userRes = await fetch("/api/user");
-        const userData = await userRes.json();
-        if (!userRes.ok || !userData.success)
-          throw new Error("Failed to fetch users");
+        const [userRes, streamRes] = await Promise.all([
+          fetch("/api/user"),
+          fetch("/api/livestreams"),
+        ]);
 
-        const sellerUsers: Seller[] = userData.users.filter(
-          (user: Seller) => user.role === "seller"
-        );
+        if (!userRes.ok || !streamRes.ok) {
+          throw new Error("Failed to fetch data");
+        }
+
+        const [userData, streamData] = await Promise.all([
+          userRes.json(),
+          streamRes.json(),
+        ]);
+
+        const sellerUsers: Seller[] =
+          userData.users?.filter((user: Seller) => user.role === "seller") ||
+          [];
+
         setSellers(sellerUsers);
 
-        // Fetch livestreams and extract featured products
-        const streamRes = await fetch("/api/livestreams");
-        const streamData = await streamRes.json();
-        if (!streamRes.ok || !streamData.livestreams)
-          throw new Error("Failed to fetch streams");
-
-        const featuredProducts: Product[] = extractFeaturedProducts(
+        const featuredProducts = extractFeaturedProducts(
           sellerUsers,
-          streamData.livestreams
+          streamData.livestreams || []
         );
 
         setFeaturedProducts(featuredProducts);
@@ -142,7 +150,7 @@ export default function FeaturedSection() {
     };
 
     fetchData();
-  }, [isLoaded, isSignedIn]); // Dependency array includes isLoaded and isSignedIn
+  }, [isLoaded]);
 
   // Helper function to extract featured products
   const extractFeaturedProducts = (
@@ -166,43 +174,50 @@ export default function FeaturedSection() {
     }, []);
   };
 
-  // Loading state for user data
   if (!isLoaded) {
-    return <p className="text-white">Loading user data...</p>;
+    return (
+      <div className="w-full bg-gradient-to-br rounded-xl overflow-hidden p-4 shadow-2xl min-h-[300px] flex items-center justify-center">
+        <p className="text-white">Loading user data...</p>
+      </div>
+    );
   }
 
-  // Render content based on authentication state
   return (
-    <div className="w-full bg-gradient-to-brrounded-xl overflow-hidden p-4 shadow-2xl">
+    <div className="w-full bg-gradient-to-br rounded-xl overflow-hidden p-4 shadow-2xl">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-2xl font-bold text-white flex items-center">
           <span className="bg-white w-2 h-6 mr-3 rounded-sm inline-block"></span>
           Featured Products
         </h3>
 
-        {/* Only the pause/play button in the top right */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={togglePause}
-          className="rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white hover:bg-white hover:text-black transition-all"
-        >
-          {isPaused ? (
-            <Play className="h-5 w-5" />
-          ) : (
-            <Pause className="h-5 w-5" />
-          )}
-        </Button>
+        {isSignedIn && featuredProducts.length > 1 && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={togglePause}
+            className="rounded-full bg-black/30 backdrop-blur-sm border border-white/20 text-white hover:bg-white hover:text-black transition-all"
+          >
+            {isPaused ? (
+              <Play className="h-5 w-5" />
+            ) : (
+              <Pause className="h-5 w-5" />
+            )}
+          </Button>
+        )}
       </div>
 
       {loading ? (
-        <p className="text-white">Loading products...</p>
+        <div className="min-h-[300px] flex items-center justify-center">
+          <p className="text-white">Loading products...</p>
+        </div>
       ) : error ? (
-        <p className="text-red-500">{error}</p>
-      ) : !isSignedIn ? (
-        <p className="text-white">You are not logged in. Please sign in.</p>
+        <div className="min-h-[300px] flex items-center justify-center">
+          <p className="text-red-500">{error}</p>
+        </div>
       ) : featuredProducts.length === 0 ? (
-        <p className="text-white">No featured products found.</p>
+        <div className="min-h-[300px] flex items-center justify-center">
+          <p className="text-white">No featured products found.</p>
+        </div>
       ) : (
         <div className="relative">
           <Carousel className="w-full" setApi={setApi}>
@@ -217,7 +232,11 @@ export default function FeaturedSection() {
                         className="relative w-full h-[500px] overflow-hidden cursor-pointer transition-transform duration-300 group-hover:scale-[1.01]"
                         onClick={() =>
                           seller?.stream &&
-                          router.push(`/seller/stream/${seller.stream}`)
+                          router.push(
+                            isSignedIn
+                              ? `/seller/stream/${seller.stream}`
+                              : `/sellerGuest/stream/${seller.stream}`
+                          )
                         }
                       >
                         <Image
@@ -225,14 +244,13 @@ export default function FeaturedSection() {
                           alt={product.description}
                           fill
                           className="rounded-lg object-contain"
+                          priority
                         />
 
-                        {/* Single info overlay that transforms on hover */}
-                        <div className="absolute inset-0 flex flex-col justify-end rounded-lg ">
-                          <div className="transform transition-all duration-300 ">
-                            <div className="p-2  group-hover:backdrop-blur-md ">
-                              {/* Price badge */}
-                              <div className="flex justify-between items-start ">
+                        <div className="absolute inset-0 flex flex-col justify-end rounded-lg">
+                          <div className="transform transition-all duration-300">
+                            <div className="p-2 group-hover:backdrop-blur-md">
+                              <div className="flex justify-between items-start">
                                 <h4 className="text-xl font-bold text-white">
                                   {product.name}
                                 </h4>
@@ -241,12 +259,10 @@ export default function FeaturedSection() {
                                 </div>
                               </div>
 
-                              {/* Description that fades in */}
                               <div className="mt-3 text-white/80 text-sm opacity-0 max-h-0 group-hover:opacity-100 group-hover:max-h-20 overflow-hidden transition-all duration-500">
                                 <p>{product.description}</p>
                               </div>
 
-                              {/* Seller information at the bottom */}
                               {seller && (
                                 <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
                                   <Avatar className="h-8 w-8 border border-white/20">
@@ -273,7 +289,6 @@ export default function FeaturedSection() {
               })}
             </CarouselContent>
 
-            {/* Carousel indicators - vertical on middle right */}
             {featuredProducts.length > 1 && (
               <div
                 className="absolute right-4 top-1/4 -translate-y-1/2 flex flex-col gap-2 mt-0 z-10"
@@ -288,8 +303,8 @@ export default function FeaturedSection() {
                         : "h-2 w-2 bg-white/30"
                     }`}
                     onClick={() => {
-                      api?.scrollTo(index); // Move to clicked slide
-                      setCurrent(index); // Ensure current state updates
+                      api?.scrollTo(index);
+                      setCurrent(index);
                     }}
                     aria-label={`Go to slide ${index + 1}`}
                   />

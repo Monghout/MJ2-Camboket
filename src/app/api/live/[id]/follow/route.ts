@@ -3,11 +3,13 @@ import { connectDB } from "@/lib/mongodb";
 import LiveStream from "@/app/models/LiveStream";
 import User from "@/app/models/User";
 
-// POST: Follow a stream
-export async function POST(req: Request, context: { params: { id: string } }) {
+export async function POST(
+  request: Request,
+  { params }: { params: { id: string } }
+): Promise<NextResponse> {
   try {
-    const { id } = await context.params; // Await params before destructuring
-    const { userId } = await req.json(); // Clerk user ID
+    const { id } = params;
+    const { userId } = await request.json();
 
     await connectDB();
 
@@ -54,14 +56,13 @@ export async function POST(req: Request, context: { params: { id: string } }) {
   }
 }
 
-// DELETE: Unfollow a stream
 export async function DELETE(
-  req: Request,
-  context: { params: { id: string } }
-) {
+  request: Request,
+  { params }: { params: { id: string } }
+): Promise<NextResponse> {
   try {
-    const { id } = await context.params; // Await params before destructuring
-    const { userId } = await req.json(); // Clerk user ID
+    const { id } = params;
+    const { userId } = await request.json();
 
     await connectDB();
 

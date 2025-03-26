@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/clerk-react";
 import Image from "next/image";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,20 +12,21 @@ import {
   Play,
   RefreshCw,
   Search,
-} from "lucide-react"; // Import Search icon
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input"; // Import Input component
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"; // Import Select component for category filter
+} from "@/components/ui/select";
 
 interface Product {
   _id: string;
+  name: string;
   image: string;
   description: string;
   price: number;
@@ -40,13 +42,13 @@ interface Stream {
   viewerCount?: number;
   startedAt?: string;
   liveStreamId?: string;
-  sellerId?: string; // Add sellerId to match the user's _id or clerkId
-  category?: string; // Add category to filter streams
+  sellerId?: string;
+  category?: string;
 }
 
 interface MuxStream {
   id: string;
-  status: string; // Possible values: "active", "idle", "disconnected"
+  status: string;
 }
 
 interface User {
@@ -57,181 +59,160 @@ interface User {
 }
 
 export default function LiveStreamsPage() {
+  const { isLoaded } = useUser();
   const [streams, setStreams] = useState<Stream[]>([]);
   const [muxStreams, setMuxStreams] = useState<MuxStream[]>([]);
-  const [users, setUsers] = useState<User[]>([]); // State to store user data
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState(""); // State for search query
-  const [selectedCategory, setSelectedCategory] = useState("all"); // State for selected category
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const router = useRouter();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Function to fetch streams, Mux status, and user data
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
 
-      // Fetch users from /api/user endpoint
+      // Fetch users first
       const userRes = await fetch("/api/user");
       if (!userRes.ok) throw new Error("Failed to fetch users");
       const userData = await userRes.json();
       setUsers(userData.users);
 
-      // Fetch streams from /api/live/streams endpoint
+      // Then fetch streams
       const streamRes = await fetch("/api/live/streams");
       if (!streamRes.ok) throw new Error("Failed to fetch streams");
       const streamData = await streamRes.json();
 
-      // Fetch Mux stream status
+      // Then fetch Mux status
       const muxResponse = await fetch("/api/mux");
       if (!muxResponse.ok) throw new Error("Failed to fetch Mux streams");
       const muxData = await muxResponse.json();
 
-      // Map sellerPhoto to the user's photo
+      // Enhance streams with seller photos
       const enhancedStreams = streamData.streams.map((stream: Stream) => {
-        const user = users.find(
-          (user) =>
+        const user = userData.users.find(
+          (user: User) =>
             user._id === stream.sellerId || user.clerkId === stream.sellerId
         );
         return {
           ...stream,
-          sellerPhoto: user?.photo, // Use user's photo if found
+          sellerPhoto: user?.photo,
+          sellerName: user?.name || stream.sellerName,
         };
       });
 
       setStreams(enhancedStreams);
       setMuxStreams(muxData.liveStreams);
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+      console.error("Failed to fetch data:", err);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Initial fetch on component mount
-  useEffect(() => {
-    fetchData();
   }, []);
 
-  // Effect to monitor Mux stream status changes
+  // Initial fetch
   useEffect(() => {
-    let previousMuxStreams = muxStreams;
+    if (!isLoaded) return;
+    fetchData();
+  }, [fetchData, isLoaded]);
 
+  // Mux status monitoring
+  useEffect(() => {
     const checkForStatusChange = async () => {
       try {
         const muxResponse = await fetch("/api/mux");
         if (muxResponse.ok) {
           const muxData = await muxResponse.json();
-          const currentMuxStreams = muxData.liveStreams;
-
-          // Check if any stream's status has changed
-          const hasStatusChanged = currentMuxStreams.some(
-            (currentStream: MuxStream) => {
-              const previousStream = previousMuxStreams.find(
-                (prevStream) => prevStream.id === currentStream.id
-              );
-              return previousStream?.status !== currentStream.status;
-            }
-          );
-
-          if (hasStatusChanged) {
-            // Refresh the streams list if a status change is detected
-            await fetchData();
-            previousMuxStreams = currentMuxStreams; // Update the previous state
-          }
-
-          // Check for disconnected or idle streams
-          currentMuxStreams.forEach((currentStream: MuxStream) => {
-            const previousStream = previousMuxStreams.find(
-              (prevStream) => prevStream.id === currentStream.id
-            );
-
-            if (
-              previousStream?.status === "active" &&
-              (currentStream.status === "idle" ||
-                currentStream.status === "disconnected")
-            ) {
-              console.log(
-                `Stream ${currentStream.id} is now ${currentStream.status}`
-              );
-              // You can trigger additional actions here, like showing a toast notification
-            }
-          });
+          setMuxStreams(muxData.liveStreams);
         }
       } catch (error) {
-        console.error("Error checking Mux stream status:", error);
+        console.error("Error checking Mux status:", error);
       }
     };
 
-    // Set up an interval to check for status changes every 5 seconds
     intervalRef.current = setInterval(checkForStatusChange, 5000);
-
-    // Clean up the interval on component unmount
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [muxStreams]);
+  }, []);
 
-  // Filter streams based on Mux status, search query, and selected category
+  // Filter live streams with enhanced search
   const liveStreams = streams
     .filter((stream) => {
       const muxStream = muxStreams.find((ms) => ms.id === stream.liveStreamId);
-      return muxStream?.status === "active"; // Only show streams with active Mux status
+      return muxStream?.status === "active";
     })
     .filter((stream) => {
-      // Filter by search query (title or seller name)
-      const matchesSearch =
-        stream.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        stream.sellerName?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
-    })
-    .filter((stream) => {
-      // Filter by selected category
-      if (selectedCategory === "all") return true;
-      return stream.category === selectedCategory;
+      if (selectedCategory !== "all" && stream.category !== selectedCategory) {
+        return false;
+      }
+
+      if (!searchQuery) return true;
+
+      const query = searchQuery.toLowerCase();
+
+      // Check stream title and seller name
+      if (
+        stream.title.toLowerCase().includes(query) ||
+        stream.sellerName?.toLowerCase().includes(query)
+      ) {
+        return true;
+      }
+
+      // Check product names
+      return stream.products.some((product) =>
+        product.name.toLowerCase().includes(query)
+      );
     });
 
-  // Refresh button handler
-  const handleRefresh = async () => {
-    setLoading(true); // Show loading state while refreshing
-    await fetchData(); // Re-fetch streams and Mux status
-  };
-
-  // Get unique categories from streams
+  // Get unique categories
   const categories = Array.from(
     new Set(streams.map((stream) => stream.category).filter(Boolean))
   );
 
+  if (!isLoaded) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-pulse flex flex-col items-center">
+            <div className="h-12 w-12 rounded-full bg-gray-200 mb-4"></div>
+            <div className="h-4 w-32 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6">
-      {/* Header with label, badge, and refresh button */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Live Streams</h1>
         <div className="flex items-center gap-4">
           <Badge variant="outline" className="px-3 py-1 text-sm font-medium">
             {liveStreams.length} Live Now
           </Badge>
-          {/* Refresh Button */}
           <Button
             variant="outline"
             size="icon"
-            onClick={handleRefresh}
+            onClick={fetchData}
             disabled={loading}
             aria-label="Refresh streams"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
 
-      {/* Search Input and Category Filter */}
-      <div className="flex gap-4 mb-8">
+      {/* Search and Filter */}
+      <div className="flex flex-col md:flex-row gap-4 mb-8">
         <div className="relative flex-grow">
           <Input
             type="text"
-            placeholder="Search for products or sellers"
+            placeholder="Search streams, sellers, or products"
             className="pl-10 pr-4 py-2 w-full"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -241,12 +222,9 @@ export default function LiveStreamsPage() {
             size={20}
           />
         </div>
-        <Select
-          value={selectedCategory}
-          onValueChange={(value) => setSelectedCategory(value)}
-        >
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select a category" />
+            <SelectValue placeholder="All Categories" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
@@ -259,26 +237,44 @@ export default function LiveStreamsPage() {
         </Select>
       </div>
 
-      {/* Conditional rendering for loading and live streams */}
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-pulse flex flex-col items-center">
-            <div className="h-12 w-12 rounded-full bg-black mb-4"></div>
-            <div className="h-4 w-32 bg-black rounded"></div>
+      {/* Content */}
+      {error ? (
+        <div className="text-center py-20">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+            <Play className="h-8 w-8 text-red-600" />
           </div>
+          <h2 className="text-xl font-semibold mb-2">Error Loading Streams</h2>
+          <p className="text-gray-500 mb-4">{error}</p>
+          <Button onClick={fetchData}>Retry</Button>
+        </div>
+      ) : loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i} className="overflow-hidden border border-gray-200">
+              <div className="h-64 bg-gray-200 animate-pulse" />
+              <CardContent className="p-4 space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
+                <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : liveStreams.length === 0 ? (
         <div className="text-center py-20">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-black mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
             <Play className="h-8 w-8 text-gray-400" />
           </div>
-          <h2 className="text-xl font-semibold mb-2">No Live Streams</h2>
-          <p className="text-gray-500">Check back later for upcoming streams</p>
+          <h2 className="text-xl font-semibold mb-2">No Live Streams Found</h2>
+          <p className="text-gray-500">
+            {searchQuery || selectedCategory !== "all"
+              ? "Try adjusting your search or filters"
+              : "Check back later for upcoming streams"}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {liveStreams.map((stream) => (
-            <StreamCard key={stream._id} stream={stream} />
+            <StreamCardWithAuthRouting key={stream._id} stream={stream} />
           ))}
         </div>
       )}
@@ -286,11 +282,31 @@ export default function LiveStreamsPage() {
   );
 }
 
-function StreamCard({ stream }: { stream: Stream }) {
+function StreamCardWithAuthRouting({ stream }: { stream: Stream }) {
   const router = useRouter();
+  const { isSignedIn } = useUser();
 
+  const handleClick = () => {
+    // Route to guest view if not signed in
+    const path = isSignedIn
+      ? `/seller/stream/${stream._id}`
+      : `/sellerGuest/stream/${stream._id}`;
+    router.push(path);
+  };
+
+  return <StreamCard stream={stream} onClick={handleClick} />;
+}
+
+function StreamCard({
+  stream,
+  onClick,
+}: {
+  stream: Stream;
+  onClick: () => void;
+}) {
   // Format time since stream started
   const getTimeSince = (dateString: string) => {
+    if (!dateString) return "";
     const startTime = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - startTime.getTime();
@@ -307,8 +323,8 @@ function StreamCard({ stream }: { stream: Stream }) {
 
   return (
     <Card
-      className="overflow-hidden hover:shadow-lg transition-all duration-300 border border-black hover:border-gray-300"
-      onClick={() => router.push(`/seller/stream/${stream._id}`)}
+      className="overflow-hidden hover:shadow-lg transition-all duration-300 border border-black hover:border-gray-300 cursor-pointer"
+      onClick={onClick}
     >
       <div className="relative">
         <ImageSlider
@@ -339,6 +355,11 @@ function StreamCard({ stream }: { stream: Stream }) {
             </Avatar>
             <span className="text-sm text-gray-600">{stream.sellerName}</span>
           </div>
+          {stream.startedAt && (
+            <span className="text-xs text-gray-500">
+              {getTimeSince(stream.startedAt)}
+            </span>
+          )}
         </div>
       </CardContent>
 
@@ -346,6 +367,11 @@ function StreamCard({ stream }: { stream: Stream }) {
         <span className="text-xs text-gray-500">
           {stream.products.length} products
         </span>
+        {stream.viewerCount && (
+          <span className="text-xs text-gray-500">
+            {stream.viewerCount} viewers
+          </span>
+        )}
       </CardFooter>
     </Card>
   );

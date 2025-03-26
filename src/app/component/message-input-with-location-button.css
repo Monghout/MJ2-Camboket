@@ -1,0 +1,10 @@
+.message-input-container {
+  display: flex;
+}
+
+.location-share-button {
+  border-radius: 9999px;
+  margin: 5px 5px 5px 0px;
+  line-height: 1;
+  padding: 5px 10px;
+}

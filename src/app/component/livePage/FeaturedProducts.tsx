@@ -6,6 +6,9 @@ interface FeaturedProductsProps {
 }
 
 export default function FeaturedProducts({ products }: FeaturedProductsProps) {
+  // Filter products where the 'feature' property is true
+  const featuredProducts = products.filter((product) => product.feature);
+
   return (
     <Card className="border-none shadow-xl bg-background">
       <CardHeader>
@@ -16,7 +19,8 @@ export default function FeaturedProducts({ products }: FeaturedProductsProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {products.slice(0, 3).map((product, index) => (
+          {/* Render the first 3 featured products */}
+          {featuredProducts.slice(0, 3).map((product, index) => (
             <div key={index} className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-md overflow-hidden bg-muted">
                 <img
