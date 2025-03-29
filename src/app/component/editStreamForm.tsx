@@ -148,7 +148,7 @@ export default function EditStreamForm({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Stream Title</Label>
+                <Label htmlFor="title">Shop name</Label>
                 <Input
                   id="title"
                   value={title}

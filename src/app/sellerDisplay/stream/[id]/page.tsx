@@ -4,12 +4,11 @@ import { notFound, useParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Copy, Video, WifiOff } from "lucide-react";
-
+import { Copy, WifiOff, Video } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 // Components
 import { StreamChatProvider } from "@/app/provider/chat";
 import LoadingSkeleton from "@/app/component/liveDisplay-Component/skeletonLoading";
-import StreamPlayerCard from "@/app/component/liveDisplay-Component/StreamPlayerCard";
 import StreamDetails from "@/app/component/livePage/StreamDetails";
 import EditStreamForm from "@/app/component/editStreamForm";
 import SellerInfo from "@/app/component/livePage/SellerInfo";
@@ -22,14 +21,13 @@ import MapOverlay from "@/app/component/MapOverlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Image } from "lucide-react";
 
 const apiKey = process.env.NEXT_PUBLIC_STREAM_CHAT_API_KEY!;
 
 export default function StreamPage() {
   const { id } = useParams();
-  const { isLoaded, user } = useUser();
   const router = useRouter();
+  const { isLoaded, user } = useUser();
 
   // State management
   const [stream, setStream] = useState<any>(null);
@@ -38,49 +36,53 @@ export default function StreamPage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isCopyDisabled, setIsCopyDisabled] = useState(false);
   const [muxStreams, setMuxStreams] = useState<any[]>([]);
-  const [playerKey, setPlayerKey] = useState(0);
   const [userToken, setUserToken] = useState<string | null>(null);
+  const [isDisplayMode, setIsDisplayMode] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Determine mode from URL
-  const isDisplayMode =
-    typeof window !== "undefined" &&
-    window.location.pathname.includes("sellerDisplay");
-
+  // Check if we're in display mode based on route
+  useEffect(() => {
+    setIsDisplayMode(window.location.pathname.includes("sellerDisplay"));
+  }, []);
+  useEffect(() => {
+    if (stream?.isLive && isDisplayMode && !isRedirecting) {
+      setIsRedirecting(true);
+      const timer = setTimeout(() => {
+        router.push(`/seller/stream/${id}`);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [stream?.isLive, isDisplayMode, id, router]);
   // Refs for intervals
   const intervalRefs = useRef({
     status: null as NodeJS.Timeout | null,
-    player: null as NodeJS.Timeout | null,
   });
-  const switchToDisplayMode = async () => {
+
+  // Switch to video mode
+  const switchToVideoMode = async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/live/${id}/toggle-status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isLive: false }), // Set isLive to false for display mode
+        body: JSON.stringify({ isLive: true }),
       });
 
-      if (!response.ok) throw new Error("Failed to activate display mode");
+      if (!response.ok) throw new Error("Failed to activate video mode");
 
       const updatedStream = await response.json();
       setStream(updatedStream);
-      router.push(`/sellerDisplay/stream/${id}`);
-      toast.success("Display mode activated");
+      router.push(`/seller/stream/${id}`);
+      toast.success("Video mode activated");
     } catch (error) {
-      toast.error("Failed to switch to display mode");
+      toast.error("Failed to switch to video mode");
       console.error(error);
     } finally {
       setLoading(false);
     }
   };
-  // Redirect to display mode if stream is offline
-  useEffect(() => {
-    if (stream && !stream.isLive && !isDisplayMode) {
-      router.push(`/sellerDisplay/stream/${id}`);
-    }
-  }, [stream, id, router, isDisplayMode]);
 
-  // Fetch Stream Chat token
+  // Fetch Stream Chat token for authenticated users
   useEffect(() => {
     if (!isLoaded || !user) return;
 
@@ -109,6 +111,7 @@ export default function StreamPage() {
       setStream(data.stream);
       setSeller(data.seller);
 
+      // Check follow status for logged-in users
       if (user) {
         const isUserFollowing =
           data.stream.followers?.some((f: any) => f.followerId === user.id) ||
@@ -135,10 +138,10 @@ export default function StreamPage() {
         const matchedStream = data.liveStreams.find(
           (ms: any) => ms.id === stream.liveStreamId
         );
-        const isNowLive = matchedStream?.status === "active";
+        const shouldBeLive = matchedStream?.status === "active";
 
-        if (stream.isLive !== isNowLive) {
-          setStream((prev: any) => ({ ...prev, isLive: isNowLive }));
+        if (stream.isLive !== shouldBeLive) {
+          setStream((prev: any) => ({ ...prev, isLive: shouldBeLive }));
         }
       }
     } catch (error) {
@@ -151,6 +154,7 @@ export default function StreamPage() {
     fetchMuxData();
     if (id) fetchStreamData();
 
+    // Set up refresh interval
     intervalRefs.current.status = setInterval(fetchMuxData, 10000);
 
     return () => {
@@ -223,9 +227,11 @@ export default function StreamPage() {
     }
   };
 
+  // Loading and error states
   if (loading) return <LoadingSkeleton />;
   if (!stream) return notFound();
 
+  // Derived state
   const isSeller = user?.id === seller?.clerkId;
   const isBuyer = user?.id && user.id !== seller?.clerkId;
   const isGuest = !user;
@@ -242,16 +248,18 @@ export default function StreamPage() {
             className="h-24 w-48 cursor-pointer"
             alt="Logo"
           />
-        </Link>{" "}
-        {!isDisplayMode && isSeller && (
+        </Link>
+
+        {/* Switch to Video Mode Button (only in display mode) */}
+        {isDisplayMode && isSeller && (
           <Button
-            onClick={switchToDisplayMode}
+            onClick={switchToVideoMode}
             variant="outline"
             className="mt-4"
-            disabled={loading}
+            disabled={loading || stream?.isLive === true}
           >
-            <Image className="h-4 w-4 mr-2" />
-            {loading ? "Switching..." : "Switch to Display Mode"}
+            <Video className="h-4 w-4 mr-2" />
+            {loading ? "Switching..." : "Switch to Video Mode"}
           </Button>
         )}
       </div>
@@ -259,74 +267,45 @@ export default function StreamPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto p-4 md:p-8">
         <div className="flex flex-col md:flex-row gap-6">
-          {/* Left Column - Stream Content */}
+          {/* Left Column - Main Content */}
           <div className="flex-1 space-y-6">
-            {isDisplayMode ? (
-              <>
-                {/* Display Mode Content */}
-                <div className="bg-gray-900/50 rounded-lg p-4">
-                  <div className="text-sm text-gray-400">
-                    Stream Status:{" "}
-                    <span
-                      className={`font-medium ${
-                        isLive ? "text-green-500" : "text-red-500"
-                      }`}
-                    >
-                      {isLive ? "LIVE" : "OFFLINE"}
-                    </span>
-                  </div>
-                  {!isLive && (
-                    <div className="flex items-center mt-2 text-gray-300">
-                      <WifiOff className="h-4 w-4 mr-2 text-red-500" />
-                      <span>The streamer is currently offline</span>
-                    </div>
-                  )}
+            {/* Stream Status - Modified for display mode */}
+            <div className="bg-gray-900/50 rounded-lg p-4">
+              <div className="text-sm text-gray-400">
+                {isDisplayMode ? "Display Mode" : "Stream Status"}:{" "}
+                <span
+                  className={`font-medium ${
+                    isDisplayMode
+                      ? "text-blue-500"
+                      : isLive
+                      ? "text-green-500"
+                      : "text-red-500"
+                  }`}
+                >
+                  {isDisplayMode ? "ACTIVE" : isLive ? "LIVE" : "OFFLINE"}
+                </span>
+              </div>
+              {!isLive && !isDisplayMode && (
+                <div className="flex items-center mt-2 text-gray-300">
+                  <WifiOff className="h-4 w-4 mr-2 text-red-500" />
+                  <span>The streamer is currently offline</span>
                 </div>
-
-                {/* Featured Products as Main Component */}
-                {stream.products?.length > 0 && (
-                  <FeaturedProducts
-                    products={stream.products}
-                    className="w-full"
-                    isSeller={isSeller}
-                    onRemoveProduct={handleRemoveProduct}
-                  />
-                )}
-              </>
-            ) : (
-              <>
-                {/* Video Mode Content */}
-                <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
-                  <StreamPlayerCard
-                    key={playerKey}
-                    playbackId={stream.playbackId}
-                    isLive={isLive}
-                    liveStreamId={stream.liveStreamId}
-                  />
-
-                  {!isLive && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-white p-4">
-                      <WifiOff className="h-12 w-12 mb-4 text-red-500" />
-                      <h3 className="text-xl font-semibold">Stream Offline</h3>
-                      <p className="text-gray-400 mt-2 text-center">
-                        The streamer is currently offline. Check back later!
-                      </p>
-                    </div>
-                  )}
+              )}
+              {isDisplayMode && (
+                <div className="flex items-center mt-2 text-gray-300">
+                  <span>Products are being displayed to viewers</span>
                 </div>
+              )}
+            </div>
 
-                {/* Stream Status */}
-                <div className="text-sm text-gray-400">
-                  Status:{" "}
-                  <span
-                    className={`font-medium ${
-                      isLive ? "text-green-500" : "text-red-500"
-                    }`}
-                  >
-                    {isLive ? "LIVE" : "OFFLINE"}
-                  </span>
-                </div>
-              </>
+            {/* Featured Products as Main Component */}
+            {stream.products?.length > 0 && (
+              <FeaturedProducts
+                products={stream.products}
+                className="w-full"
+                isSeller={isSeller}
+                onRemoveProduct={handleRemoveProduct}
+              />
             )}
 
             {/* Chat Section */}
@@ -424,17 +403,8 @@ export default function StreamPage() {
               </Button>
             )}
 
-            {/* Featured Products in Video Mode (visible to all) */}
-            {!isDisplayMode && stream.products?.length > 0 && (
-              <FeaturedProducts products={stream.products} />
-            )}
-
-            <div className="p-6">
-              Need to send location?
-              <div className="pt-2">
-                <MapOverlay />
-              </div>
-            </div>
+            <div className="p-4"></div>
+            <MapOverlay />
           </div>
         </div>
       </div>

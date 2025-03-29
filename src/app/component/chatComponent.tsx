@@ -14,7 +14,15 @@ import { useEffect, useState } from "react";
 import { LoadingSpinner } from "@/app/component/LoadingSpinner";
 import { StreamChat, type Channel as StreamChannel } from "stream-chat";
 import { Card, CardContent } from "@/components/ui/card";
-import { ShoppingBag, Check } from "lucide-react"; // Import Check icon for confirmation
+import {
+  ShoppingBag,
+  Check,
+  User,
+  MessageSquare,
+  X,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 
 const apiKey = process.env.NEXT_PUBLIC_STREAM_CHAT_API_KEY!;
 
@@ -23,7 +31,7 @@ interface Product {
   name: string;
   price: number;
   image?: string;
-  featured: boolean; // Add a featured field
+  featured: boolean;
 }
 
 interface Stream {
@@ -35,16 +43,16 @@ interface Stream {
   thumbnail?: string;
   sellerId: string;
   sellerName: string;
-  products: Product[]; // Use the updated Product interface
+  products: Product[];
 }
 
 interface ChatComponentProps {
   streamerId: string;
   stream: Stream | null;
-  isStreamer: boolean; // Add this prop to differentiate between streamer and viewer
+  isStreamer: boolean;
 }
 
-const ChatComponent = ({
+const ChatOverlay = ({
   streamerId,
   stream,
   isStreamer,
@@ -52,26 +60,27 @@ const ChatComponent = ({
   const { user } = useUser();
   const [chatClient, setChatClient] = useState<StreamChat | null>(null);
   const [channel, setChannel] = useState<StreamChannel | null>(null);
-  const [channels, setChannels] = useState<StreamChannel[]>([]); // For streamer's list of channels
+  const [channels, setChannels] = useState<StreamChannel[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
     new Set()
-  ); // Track selected products
+  );
+  const [isOpen, setIsOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true);
 
   useEffect(() => {
     if (!user) return;
 
     const initializeChatClient = async () => {
+      setIsLoading(true);
       try {
-        // Fetch the Stream Chat token from your backend
         const response = await fetch(`/api/streamChat/token?userId=${user.id}`);
         if (!response.ok) {
           throw new Error("Failed to fetch token");
         }
 
         const { token } = await response.json();
-
-        // Initialize the Stream Chat client
         const client = StreamChat.getInstance(apiKey);
 
         await client.connectUser(
@@ -84,25 +93,22 @@ const ChatComponent = ({
         );
 
         if (isStreamer) {
-          // Streamer: Fetch all active channels where the streamer is a member
           const filter = { type: "messaging", members: { $in: [streamerId] } };
-          const sort = [{ last_message_at: -1 as const }]; // Sort by most recent message
+          const sort = [{ last_message_at: -1 as const }];
           const channels = await client.queryChannels(filter, sort, {
             watch: true,
             state: true,
           });
           setChannels(channels);
 
-          // Automatically select the first channel if available
           if (channels.length > 0) {
             setChannel(channels[0]);
           }
         } else {
-          // Viewer: Create and watch their own channel with the streamer
           const channelId = `${streamerId.slice(0, 24)}-${user.id.slice(
             0,
             24
-          )}`; // Shorten the channel ID
+          )}`;
           const channel = client.channel("messaging", channelId, {
             members: [streamerId, user.id],
           });
@@ -114,12 +120,13 @@ const ChatComponent = ({
       } catch (error) {
         console.error("Error initializing Stream Chat client:", error);
         setError("Failed to initialize chat. Please try again.");
+      } finally {
+        setIsLoading(false);
       }
     };
 
     initializeChatClient();
 
-    // Cleanup on unmount
     return () => {
       if (chatClient) {
         chatClient.disconnectUser();
@@ -127,226 +134,473 @@ const ChatComponent = ({
     };
   }, [user, streamerId, isStreamer]);
 
-  // Function to handle product selection
+  const getOtherMember = (channel: StreamChannel) => {
+    const members = Object.values(channel.state.members);
+    const otherMember = members.find((member) => member.user_id !== streamerId);
+    return {
+      name: otherMember?.user?.name || "Anonymous",
+      image: otherMember?.user?.image || null,
+      id: otherMember?.user_id || "unknown",
+    };
+  };
+
   const toggleProductSelection = (productId: string) => {
     setSelectedProducts((prevSelected) => {
       const newSelected = new Set(prevSelected);
       if (newSelected.has(productId)) {
-        newSelected.delete(productId); // Deselect if already selected
+        newSelected.delete(productId);
       } else {
-        newSelected.add(productId); // Select if not already selected
+        newSelected.add(productId);
       }
       return newSelected;
     });
   };
-
-  // Function to confirm selected products and send them to the chat
   const confirmSelectedProducts = async () => {
-    if (!channel || selectedProducts.size === 0) return;
+    if (!channel || !stream || selectedProducts.size === 0) return;
 
-    // Get the selected products' details
-    const selectedProductDetails = stream?.products
-      .filter((product) => selectedProducts.has(product._id))
-      .map((product) => ({
-        name: product.name,
-        price: product.price,
-        image: product.image || "/placeholder.svg",
-      }));
+    // Get the full product details from the stream's products
+    const selectedProductsToSend = stream.products.filter((product) =>
+      selectedProducts.has(product._id)
+    );
 
-    if (!selectedProductDetails || selectedProductDetails.length === 0) return;
+    if (selectedProductsToSend.length === 0) return;
 
-    // Format the message with product details
-    const messageText = selectedProductDetails
-      .map(
-        (product) =>
-          `**${product.name}** - $${product.price}\n![${product.name}](${product.image})`
-      )
-      .join("\n");
+    // Create the message text with proper markdown formatting
+    const messageText = selectedProductsToSend
+      .map((product) => {
+        let productText = `**${product.name}** - $${product.price}`;
+        if (product.image) {
+          productText += `\n![${product.name}](${product.image})`;
+        }
+        return productText;
+      })
+      .join("\n\n"); // Add extra line breaks between products
 
-    // Send the selected products as a message to the chat
-    await channel.sendMessage({
-      text: `Selected Products:\n${messageText}`,
-    });
+    try {
+      await channel.sendMessage({
+        text: `Selected Products:\n${messageText}`,
+      });
+      setSelectedProducts(new Set());
+    } catch (error) {
+      console.error("Error sending product message:", error);
+    }
+  };
+  const sortedProducts = stream?.products
+    ? [...stream.products].sort((a, b) => (b.featured ? 1 : 0))
+    : [];
 
-    // Clear the selected products
-    setSelectedProducts(new Set());
+  const toggleChat = () => {
+    setIsOpen(!isOpen);
+    if (isOpen && isMinimized) {
+      setIsMinimized(false);
+    }
   };
 
-  // Sort products: featured products first, then non-featured
-  const sortedProducts = stream?.products
-    ? [...stream.products].sort((a, b) => (b.featured ? 1 : -1))
-    : [];
+  const toggleMinimize = () => {
+    setIsMinimized(!isMinimized);
+  };
 
   if (error) {
     return (
-      <div className="text-white bg-red-500/20 p-4 rounded-md">{error}</div>
+      <div className=" text-white bg-red-500/20 p-4 rounded-md border border-red-500 animate-pulse">
+        {error}
+      </div>
     );
   }
 
-  if (!chatClient || (!channel && !isStreamer)) {
-    return <LoadingSpinner />;
-  }
-
   return (
-    <div className="relative h-screen border-10">
-      <div className="flex h-screen bg-transparent z-10 relative rounded-lg border-2">
-        {/* Chat Section */}
-        <div className="flex-1 max-w-4xl mx-auto">
-          <div className="h-full backdrop-blur-sm bg-gray-900/40 overflow-hidden">
-            <Chat client={chatClient} theme="str-chat__theme-dark">
-              {isStreamer ? (
-                // Streamer's View: List of channels and selected channel
-                <div className="flex h-full">
-                  {/* Channel List */}
-                  <div className="w-1/4 p-4 border-r border-gray-700">
-                    <h3 className="text-lg font-semibold mb-4 text-white">
-                      Active Chats
-                    </h3>
-                    {channels.map((ch) => (
-                      <div
-                        key={ch.id}
-                        className={`p-2 hover:bg-gray-700 cursor-pointer ${
-                          channel?.id === ch.id ? "bg-gray-700" : ""
-                        }`}
-                        onClick={() => setChannel(ch)}
-                      >
-                        <p className="text-white truncate">
-                          {ch.id?.replace(`${streamerId}-`, "")}{" "}
-                          {/* Display viewer ID */}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Selected Channel */}
-                  <div className="w-3/4">
-                    {channel ? (
-                      <Channel channel={channel}>
-                        <Window>
-                          <ChannelHeader />
-                          <MessageList />
-                          <MessageInput />
-                        </Window>
-                        <Thread />
-                      </Channel>
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-white">
-                        Select a chat to start messaging.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                // Viewer's View: Single chat with the streamer
-                <Channel channel={channel!}>
-                  <Window>
-                    <ChannelHeader />
-                    <MessageList />
-                    <MessageInput />
-                  </Window>
-                  <Thread />
-                </Channel>
-              )}
-            </Chat>
-          </div>
+    <div
+      className="fixed bottom-8 right-8 z-50 shadow-2xl rounded-t-lg overflow-hidden transition-all duration-500"
+      style={{
+        width: isMinimized ? "200px" : "800px",
+        height: isMinimized ? "60px" : "700px",
+        boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+      }}
+    >
+      {/* Header */}
+      <div
+        className="bg-black text-white p-4 flex justify-between items-center border-b rounded-lg border-white/20 cursor-pointer transition-all duration-500 border-2 hover:border-white"
+        onClick={toggleMinimize}
+      >
+        <div className="flex items-center gap-3 truncate">
+          <MessageSquare className="h-6 w-6 flex-shrink-0" />
+          {!isMinimized && <span className="font-semibold text-xl">Chat</span>}
+          {isMinimized && (
+            <span className="font-semibold text-sm truncate">Chat</span>
+          )}
         </div>
+        <div className="flex items-center gap-3"></div>
+      </div>
 
-        {/* Product Section (for viewers) */}
-        {!isStreamer && (
-          <div className="w-1/4 backdrop-blur-sm p-4 overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-4 text-white flex items-center">
-              <ShoppingBag className="h-4 w-4 mr-2" />
-              All Product
-            </h3>
-            {sortedProducts.length > 0 ? (
-              <div className="space-y-2">
-                {/* Featured Products */}
-                {sortedProducts
-                  .filter((product) => product.featured)
-                  .map((product) => (
-                    <Card
-                      key={product._id}
-                      className={`hover:border-white transition-all duration-300 ${
-                        selectedProducts.has(product._id)
-                          ? "border-2 border-blue-500"
-                          : ""
-                      }`}
-                      onClick={() => toggleProductSelection(product._id)}
-                    >
-                      <div className="aspect-video relative">
-                        <img
-                          src={product.image || "/placeholder.svg"}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute bottom-0 right-0 p-2">
-                          <div className="bg-emerald-500/90 text-white font-bold px-3 py-1 rounded-full text-xs">
-                            $ {product.price}
-                          </div>
-                        </div>
-                      </div>
-                      <CardContent className="p-3">
-                        <h3 className="font-medium truncate text-white">
-                          {product.name}
+      {!isMinimized && (
+        <div className="flex h-[calc(100%-60px)] bg-black text-white transition-all duration-500">
+          {/* Main Chat Section */}
+          <div className={`${isStreamer ? "w-3/4" : "flex-1"} max-w-4xl`}>
+            <div className="h-full bg-black overflow-hidden">
+              {chatClient ? (
+                <Chat client={chatClient} theme="str-chat__theme-dark">
+                  {isStreamer ? (
+                    <div className="flex h-full">
+                      {/* Channel List */}
+                      <div className="w-1/3 p-4 border-r border-white/10 bg-black overflow-y-auto">
+                        <h3 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">
+                          <MessageSquare className="h-5 w-5" />
+                          <span>Active Chats</span>
                         </h3>
-                      </CardContent>
-                    </Card>
-                  ))}
 
-                {/* Non-Featured Products */}
-                {sortedProducts
-                  .filter((product) => !product.featured)
-                  .map((product) => (
-                    <Card
-                      key={product._id}
-                      className={`hover:border-white transition-all duration-300 ${
-                        selectedProducts.has(product._id)
-                          ? "border-2 border-blue-500"
-                          : ""
-                      }`}
-                      onClick={() => toggleProductSelection(product._id)}
-                    >
-                      <div className="aspect-video relative">
-                        <img
-                          src={product.image || "/placeholder.svg"}
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute bottom-0 right-0 p-2">
-                          <div className="bg-emerald-500/90 text-white font-bold px-3 py-1 rounded-full text-xs">
-                            $ {product.price}
+                        {channels.length === 0 ? (
+                          <div className="text-gray-400 text-sm italic p-2">
+                            No active chats
                           </div>
-                        </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {channels.map((ch) => {
+                              const otherMember = getOtherMember(ch);
+                              return (
+                                <div
+                                  key={ch.id}
+                                  className={`p-3 rounded-lg transition-all duration-500 cursor-pointer flex justify-between items-center ${
+                                    channel?.id === ch.id
+                                      ? "bg-white text-black"
+                                      : "text-white hover:bg-white/10"
+                                  }`}
+                                >
+                                  <div
+                                    className="flex items-center gap-3 truncate flex-1"
+                                    onClick={() => setChannel(ch)}
+                                  >
+                                    {otherMember.image ? (
+                                      <div className="h-10 w-10 rounded-full overflow-hidden flex-shrink-0 border border-white/20">
+                                        <img
+                                          src={
+                                            otherMember.image ||
+                                            "/placeholder.svg"
+                                          }
+                                          alt={otherMember.name}
+                                          className="h-full w-full object-cover"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 border border-white/20">
+                                        <User className="h-5 w-5 text-white/70" />
+                                      </div>
+                                    )}
+                                    <div className="flex flex-col overflow-hidden">
+                                      <span className="truncate font-medium">
+                                        {otherMember.name}
+                                      </span>
+                                      <span className="text-xs opacity-70 truncate">
+                                        ID: {otherMember.id.substring(0, 8)}...
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    className="text-gray-400 hover:text-red-500 transition-all duration-500 ml-2"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                    }}
+                                  >
+                                    <X className="h-5 w-5" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                      <CardContent className="p-3">
-                        <h3 className="font-medium truncate text-white">
-                          {product.name}
-                        </h3>
-                      </CardContent>
-                    </Card>
-                  ))}
 
-                {/* Confirm Button */}
+                      {/* Selected Channel */}
+                      <div className="w-2/3">
+                        {channel ? (
+                          <Channel channel={channel}>
+                            <Window>
+                              <ChannelHeader />
+                              <MessageList />
+                              <MessageInput />
+                            </Window>
+                            <Thread />
+                          </Channel>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-full text-white/70 p-6">
+                            <MessageSquare className="h-16 w-16 mb-4 opacity-20" />
+                            <p className="text-xl font-light">
+                              Select a chat to start messaging
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <Channel channel={channel!}>
+                      <Window>
+                        <ChannelHeader />
+                        <MessageList />
+                        <MessageInput />
+                      </Window>
+                      <Thread />
+                    </Channel>
+                  )}
+                </Chat>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <LoadingSpinner size="medium" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Product Section (for viewers) */}
+          {!isStreamer && (
+            <div className="w-1/3 flex flex-col border-l border-white/10 bg-black">
+              <div className="p-4">
+                <h3 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">
+                  <ShoppingBag className="h-5 w-5" />
+                  <span>Products</span>
+                </h3>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-4 pb-4">
+                {sortedProducts.length > 0 ? (
+                  <div className="space-y-4">
+                    {/* Featured Products */}
+                    {sortedProducts
+                      .filter((product) => product.featured)
+                      .map((product) => (
+                        <Card
+                          key={product._id}
+                          className={`bg-black hover:bg-white/5 transition-all duration-500 border border-white/20 ${
+                            selectedProducts.has(product._id)
+                              ? "ring-2 ring-white border-white"
+                              : ""
+                          }`}
+                          onClick={() => toggleProductSelection(product._id)}
+                        >
+                          <div className="aspect-video relative">
+                            <img
+                              src={
+                                product.image ||
+                                "/placeholder.svg?height=200&width=300"
+                              }
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                            />
+                            {product.featured && (
+                              <div className="absolute top-0 left-0 p-2">
+                                <div className="bg-white text-black font-bold px-3 py-1 rounded-full text-xs">
+                                  Featured
+                                </div>
+                              </div>
+                            )}
+                            <div className="absolute bottom-0 right-0 p-2">
+                              <div className="bg-white text-black font-bold px-3 py-1 rounded-full text-xs">
+                                ${product.price}
+                              </div>
+                            </div>
+                            {selectedProducts.has(product._id) && (
+                              <div className="absolute inset-0 bg-white/10 flex items-center justify-center">
+                                <div className="bg-white rounded-full p-2">
+                                  <Check className="h-6 w-6 text-black" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <CardContent className="p-3">
+                            <h3 className="font-medium truncate text-white">
+                              {product.name}
+                            </h3>
+                          </CardContent>
+                        </Card>
+                      ))}
+
+                    {/* Non-Featured Products */}
+                    {sortedProducts
+                      .filter((product) => !product.featured)
+                      .map((product) => (
+                        <Card
+                          key={product._id}
+                          className={`bg-black hover:bg-white/5 transition-all duration-500 border border-white/20 ${
+                            selectedProducts.has(product._id)
+                              ? "ring-2 ring-white border-white"
+                              : ""
+                          }`}
+                          onClick={() => toggleProductSelection(product._id)}
+                        >
+                          <div className="aspect-video relative">
+                            <img
+                              src={
+                                product.image ||
+                                "/placeholder.svg?height=200&width=300"
+                              }
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute bottom-0 right-0 p-2">
+                              <div className="bg-white text-black font-bold px-3 py-1 rounded-full text-xs">
+                                ${product.price}
+                              </div>
+                            </div>
+                            {selectedProducts.has(product._id) && (
+                              <div className="absolute inset-0 bg-white/10 flex items-center justify-center">
+                                <div className="bg-white rounded-full p-2">
+                                  <Check className="h-6 w-6 text-black" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <CardContent className="p-3">
+                            <h3 className="font-medium truncate text-white">
+                              {product.name}
+                            </h3>
+                          </CardContent>
+                        </Card>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-400">
+                    <ShoppingBag className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                    <p>No products available for this stream</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Confirm Button - Now fixed at the bottom */}
+              <div className="p-4 border-t border-white/10 bg-black sticky bottom-0">
                 <button
-                  className="w-full bg-blue-500 text-white py-2 rounded-md mt-4 flex items-center justify-center"
+                  className={`w-full py-3 rounded-lg flex items-center justify-center transition-all duration-500 ${
+                    selectedProducts.size === 0
+                      ? "bg-white/10 text-white/50 cursor-not-allowed"
+                      : "bg-white text-black hover:bg-white/90"
+                  }`}
                   onClick={confirmSelectedProducts}
                   disabled={selectedProducts.size === 0}
                 >
-                  <Check className="h-4 w-4 mr-2" />
-                  Confirm Selection
+                  <Check className="h-5 w-5 mr-2" />
+                  Confirm Selection ({selectedProducts.size})
                 </button>
               </div>
-            ) : (
-              <div className="text-center py-8 text-gray-400">
-                <ShoppingBag className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                <p>No products available for this stream</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* When minimized, show a small preview */}
+      {isMinimized && (
+        <div className="h-[calc(100%-60px)] bg-black p-2 flex items-center justify-center"></div>
+      )}
+
+      {/* Custom CSS to override Stream Chat styles */}
+      <style jsx global>{`
+        /* Animation for the chat button */
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in {
+          animation: fade-in 0.5s ease-out forwards;
+        }
+
+        /* Override Stream Chat styles for overlay */
+        .str-chat__container {
+          height: 100% !important;
+          max-height: none !important;
+        }
+
+        .str-chat__main-panel {
+          height: calc(100% - 70px) !important;
+        }
+
+        .str-chat__message-list-scroll {
+          padding: 1rem !important;
+        }
+
+        .str-chat__message-list {
+          background: black !important;
+        }
+
+        .str-chat__message-input {
+          background: #111 !important;
+          border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+          padding: 1rem !important;
+        }
+
+        .str-chat__message-input-inner {
+          padding: 0 !important;
+        }
+
+        .str-chat__message-textarea textarea {
+          background: transparent !important;
+          min-height: 50px !important;
+          max-height: 120px !important;
+          font-size: 1rem !important;
+          padding: 0.75rem !important;
+        }
+
+        .str-chat__channel-header {
+          padding: 1rem !important;
+          height: auto !important;
+        }
+
+        .str-chat__channel-header-title {
+          font-size: 1rem !important;
+        }
+
+        .str-chat__message-simple {
+          padding: 0.75rem !important;
+          margin-bottom: 0.5rem !important;
+          transition: all 0.5s ease !important;
+        }
+
+        .str-chat__message-simple:hover {
+          transform: translateY(-2px) !important;
+        }
+
+        .str-chat__message-simple-text-inner {
+          font-size: 0.9375rem !important;
+          line-height: 1.4 !important;
+        }
+
+        .str-chat__avatar-image {
+          width: 32px !important;
+          height: 32px !important;
+        }
+
+        .str-chat__send-button {
+          transition: all 0.5s ease !important;
+        }
+
+        .str-chat__send-button:hover {
+          transform: scale(1.1) !important;
+        }
+
+        /* Custom scrollbar */
+        .str-chat ::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .str-chat ::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 4px;
+        }
+
+        .str-chat ::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 4px;
+          transition: background 0.5s ease;
+        }
+
+        .str-chat ::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+      `}</style>
     </div>
   );
 };
 
-export default ChatComponent;
+export default ChatOverlay;

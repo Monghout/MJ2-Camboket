@@ -1,4 +1,3 @@
-// components/AdvancedMap.tsx
 import {
   GoogleMap,
   Marker,
@@ -13,7 +12,7 @@ const containerStyle = {
 };
 
 const defaultCenter = {
-  lat: 11.5564, // Default Phnom Penh
+  lat: 11.5564, // Phnom Penh
   lng: 104.9282,
 };
 
@@ -23,31 +22,39 @@ export default function AdvancedMap() {
   const [mapCenter, setMapCenter] = useState(defaultCenter);
   const [autocomplete, setAutocomplete] =
     useState<google.maps.places.Autocomplete | null>(null);
+  const [locationName, setLocationName] = useState<string | null>(null);
+
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!, // Store in .env
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
     libraries: ["places"],
   });
 
   const handlePlaceChanged = () => {
     if (autocomplete !== null) {
       const place = autocomplete.getPlace();
+
       if (place.geometry?.location) {
         const lat = place.geometry.location.lat();
         const lng = place.geometry.location.lng();
         setMapCenter({ lat, lng });
         setMarkerPosition({ lat, lng });
+
+        // Set location name (formatted_address > name > fallback)
+        const name =
+          place.formatted_address || place.name || "Unknown location";
+        setLocationName(name);
       }
     }
   };
 
   const onMapClick = useCallback((e: google.maps.MapMouseEvent) => {
     if (e.latLng) {
-      setMarkerPosition({
-        lat: e.latLng.lat(),
-        lng: e.latLng.lng(),
-      });
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+      setMarkerPosition({ lat, lng });
+      setLocationName(null); // Clear name if user clicks manually
     }
   }, []);
 
@@ -60,6 +67,7 @@ export default function AdvancedMap() {
         };
         setMapCenter(pos);
         setMarkerPosition(pos);
+        setLocationName("Your current location");
       },
       () => {
         alert("Failed to get your location");
@@ -70,7 +78,7 @@ export default function AdvancedMap() {
   if (!isLoaded) return <div>Loading...</div>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-5 bg-black">
       <div className="flex gap-2 items-center">
         <Autocomplete
           onLoad={setAutocomplete}
@@ -107,6 +115,7 @@ export default function AdvancedMap() {
                   lat: e.latLng.lat(),
                   lng: e.latLng.lng(),
                 });
+                setLocationName(null); // Clear name on drag
               }
             }}
           />
@@ -114,7 +123,12 @@ export default function AdvancedMap() {
       </GoogleMap>
 
       {markerPosition && (
-        <div className="space-y-2">
+        <div className="space-y-2 bg-black ">
+          {locationName && (
+            <p>
+              <strong>Location:</strong> {locationName}
+            </p>
+          )}
           <p>
             <strong>Latitude:</strong> {markerPosition.lat}
           </p>
@@ -124,10 +138,16 @@ export default function AdvancedMap() {
           <button
             onClick={() => {
               const link = `https://www.google.com/maps?q=${markerPosition.lat},${markerPosition.lng}`;
-              navigator.clipboard.writeText(link);
-              alert("Google Maps link copied!");
+              if (typeof navigator !== "undefined" && navigator.clipboard) {
+                navigator.clipboard
+                  .writeText(link)
+                  .then(() => alert("Google Maps link copied!"))
+                  .catch(() => alert("Failed to copy the link."));
+              } else {
+                alert("Clipboard API not available.");
+              }
             }}
-            className="bg-green-600 text-white px-4 py-2 rounded"
+            className="bg-green-600 text-white px-4 py-2 bg-black rounded"
           >
             Copy Map Link
           </button>

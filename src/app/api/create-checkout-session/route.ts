@@ -26,6 +26,9 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
+      subscription_data: {
+        trial_period_days: 15,
+      },
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/payment/success?ClerkId=${userId}`,
       cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL}/`,
     });

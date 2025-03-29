@@ -19,7 +19,7 @@ export default function MapOverlay() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="relative">
+    <div className="relative ">
       {/* Map toggle button */}
       <Button
         onClick={() => setIsOpen(true)}
@@ -33,8 +33,8 @@ export default function MapOverlay() {
 
       {/* Map overlay */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="relative h-[80vh] w-[90vw] max-w-5xl rounded-lg border shadow-lg">
+        <div className="fixed  inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="relative h-[85vh] w-[90vw] max-w-5xl rounded-lg border shadow-lg">
             <Button
               onClick={() => setIsOpen(false)}
               variant="ghost"
