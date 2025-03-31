@@ -1,9 +1,8 @@
-// OverlaySubscription.tsx
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 import { X } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
-import type { useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -11,14 +10,25 @@ const stripePromise = loadStripe(
 
 interface OverlaySubscriptionProps {
   onClose: () => void;
-  user: ReturnType<typeof useUser>["user"];
 }
 
 const OverlaySubscription: React.FC<OverlaySubscriptionProps> = ({
   onClose,
-  user,
 }) => {
+  const { user } = useUser(); // Get user directly inside the component
+
+  useEffect(() => {
+    console.log("User Info:", user);
+  }, [user]);
+
   const handleCheckout = async () => {
+    if (!user) {
+      console.error("User not signed in");
+      return;
+    }
+
+    console.log("Initiating checkout for user:", user.id, user.emailAddresses);
+
     const stripe = await stripePromise;
 
     const res = await fetch("/api/create-checkout-session", {
@@ -27,12 +37,13 @@ const OverlaySubscription: React.FC<OverlaySubscriptionProps> = ({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        userId: user?.id,
-        email: user?.emailAddresses[0]?.emailAddress,
+        userId: user.id,
+        email: user.emailAddresses[0]?.emailAddress,
       }),
     });
 
     const { sessionId } = await res.json();
+    console.log("Received sessionId:", sessionId);
     stripe?.redirectToCheckout({ sessionId });
   };
 

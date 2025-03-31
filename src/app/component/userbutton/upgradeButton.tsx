@@ -31,9 +31,7 @@ export default function ParentComponent() {
       </div>
 
       {/* Render Overlay if isOverlayOpen is true */}
-      {isOverlayOpen && (
-        <OverlaySubscription onClose={closeOverlay} user={user} />
-      )}
+      {isOverlayOpen && <OverlaySubscription onClose={closeOverlay} />}
     </div>
   );
 }

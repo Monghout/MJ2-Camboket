@@ -97,7 +97,7 @@ export default function CinematicFeatured({
         }}
       >
         {/* Slides */}
-        <div className="relative w-full">
+        <div className="relative w-full h-max">
           {featuredProducts.map((product, index) => (
             <div
               key={index}
@@ -110,17 +110,21 @@ export default function CinematicFeatured({
             >
               <div className="relative aspect-[21/9] overflow-hidden group">
                 {/* Product Image */}
-                <div className="absolute inset-0">
-                  <Image
-                    src={
-                      product.image || "/placeholder.svg?height=800&width=1600"
-                    }
-                    alt={product.name}
-                    fill
-                    className="object-cover grayscale brightness-[0.4] transition-all duration-1000 ease-out transform scale-100 group-hover:scale-105 group-hover:brightness-[0.3]"
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/50"></div>
+                <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+                  <div className="relative w-full h-full rounded-lg object-contain">
+                    <Image
+                      src={
+                        product.image ||
+                        "/placeholder.svg?height=800&width=1600"
+                      }
+                      alt={product.name}
+                      fill
+                      className="object-cover grayscale brightness-[0.4] transition-all duration-1000 ease-out transform scale-100 group-hover:scale-105 group-hover:brightness-[0.3]"
+                      priority
+                      sizes="(max-width: 1600px) 100vw, 1600px"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/50"></div>
+                  </div>
                 </div>
 
                 {/* Product Name - Top Center */}

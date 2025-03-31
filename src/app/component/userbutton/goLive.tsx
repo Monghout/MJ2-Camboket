@@ -76,7 +76,7 @@ export default function GoLiveButton() {
       router.push(`/seller/stream/${userStreamId}`);
     } else {
       // Otherwise, route to the live streaming page to create a new stream
-      router.push("/live");
+      router.push("api/payment/success/");
     }
   };
 

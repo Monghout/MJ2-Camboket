@@ -16,7 +16,7 @@ interface ProductUploadProps {
     image: string;
     price: number;
     description: string;
-    feature: boolean; // Added 'feature' to the product object
+    feature: boolean;
   };
   index: number;
   onUpdate: (
@@ -26,7 +26,7 @@ interface ProductUploadProps {
       image: string;
       price: number;
       description: string;
-      feature: boolean; // Ensure 'feature' is passed in on update
+      feature: boolean;
     }
   ) => void;
   error: string | null;
@@ -43,7 +43,7 @@ export default function ProductUpload({
   const { edgestore } = useEdgeStore();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [priceError, setPriceError] = useState<string | null>(null); // State for price validation error
+  const [priceError, setPriceError] = useState<string | null>(null);
 
   const handleUpload = async (file: File) => {
     try {
@@ -94,13 +94,23 @@ export default function ProductUpload({
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
 
+    // Allow empty input
     if (value === "") {
       setPriceError(null);
       onUpdate(index, { ...product, price: 0 });
       return;
     }
 
-    const numericValue = Number.parseFloat(value);
+    // Check if the value is a valid number format (digits with optional decimal point)
+    if (!/^(\d+\.?\d*|\.\d+)$/.test(value)) {
+      setPriceError("Please enter a valid number");
+      return;
+    }
+
+    // If the value starts with a decimal point, prepend a zero (e.g., ".5" becomes "0.5")
+    const normalizedValue = value.startsWith(".") ? `0${value}` : value;
+
+    const numericValue = parseFloat(normalizedValue);
 
     if (isNaN(numericValue)) {
       setPriceError("Price must be a valid number.");
@@ -153,7 +163,10 @@ export default function ProductUpload({
           <Input
             id={`product-price-${index}`}
             placeholder="0.00"
-            value={product.price === 0 ? "" : product.price.toString()} // Show empty string if price is 0
+            type="number"
+            min="0"
+            step="0.01"
+            value={product.price === 0 ? "" : product.price.toString()}
             onChange={handlePriceChange}
           />
           {priceError && (

@@ -97,11 +97,6 @@ export default function StreamPage() {
             <div className="flex-1 space-y-6">
               {/* Stream Player */}
               <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
-                <StreamPlayerCard
-                  playbackId={stream.playbackId}
-                  isLive={isLive}
-                  liveStreamId={stream.liveStreamId}
-                />
                 {!isLive && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-white p-4">
                     <WifiOff className="h-12 w-12 mb-4 text-red-500" />

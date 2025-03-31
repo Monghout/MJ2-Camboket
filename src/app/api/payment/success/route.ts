@@ -1,15 +1,8 @@
 import { NextResponse } from "next/server";
 import { MongoClient } from "mongodb";
-import Mux from "@mux/mux-node";
 import { cookies } from "next/headers";
 
 const uri = process.env.MONGODB_URL!;
-
-// Initialize Mux
-const mux = new Mux({
-  tokenId: process.env.MUX_TOKEN_ID!,
-  tokenSecret: process.env.MUX_TOKEN_SECRET!,
-});
 
 export async function GET(req: Request) {
   try {
@@ -51,32 +44,55 @@ export async function GET(req: Request) {
 
     // Create a default livestream for the new seller
     try {
-      // Create the live stream on Mux
-      const stream = await mux.video.liveStreams.create({
-        playback_policy: ["public"],
-        new_asset_settings: { playback_policy: ["public"] },
-      });
+      // Create the live stream on Mux using direct API call
+      const auth = Buffer.from(
+        `${process.env.MUX_TOKEN_ID}:${process.env.MUX_TOKEN_SECRET}`
+      ).toString("base64");
 
-      // Get the stream key, playback ID, and the livestream ID from Mux
-      const streamKey = stream.stream_key;
-      const playbackId = stream.playback_ids?.[0]?.id;
-      const liveStreamId = stream.id; // Mux livestream ID
+      const response = await fetch(
+        "https://api.mux.com/video/v1/live-streams",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Basic ${auth}`,
+          },
+          body: JSON.stringify({
+            latency_mode: "reduced",
+            playback_policy: ["public"],
+            new_asset_settings: { playback_policy: ["public"] },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Mux API error: ${JSON.stringify(errorData)}`);
+      }
+
+      const stream = await response.json();
+
+      // Debugging: Log the entire stream response
+      console.log(
+        "Mux stream creation response:",
+        JSON.stringify(stream, null, 2)
+      );
+
+      // Get the stream credentials
+      const streamKey = stream.data?.stream_key;
+      const playbackId = stream.data?.playback_ids?.[0]?.id;
+      const liveStreamId = stream.data?.id;
 
       if (!playbackId || !streamKey || !liveStreamId) {
-        console.error("Failed to generate Mux stream credentials");
-        await client.close();
-
-        // Set flash message cookie for error
-        (await cookies()).set(
-          "flash_message",
-          JSON.stringify({
-            type: "error",
-            text: "Failed to create stream. Contact support.",
-          }),
-          { maxAge: 30 }
+        console.error(
+          "Failed to generate Mux stream credentials - missing fields:",
+          {
+            playbackId,
+            streamKey,
+            liveStreamId,
+          }
         );
-
-        return NextResponse.redirect(new URL(`/`, req.url));
+        throw new Error("Mux response missing required stream credentials");
       }
 
       // Create a default live stream document
@@ -93,9 +109,9 @@ export async function GET(req: Request) {
         isLive: false,
         streamKey,
         playbackId,
-        liveStreamId, // Include the Mux live stream ID here
-        followers: [], // Initialize the followers array as empty
-        followerCount: 0, // Initialize the follower count to 0
+        liveStreamId,
+        followers: [],
+        followerCount: 0,
         createdAt: new Date(),
       };
 
@@ -118,7 +134,10 @@ export async function GET(req: Request) {
     await client.close();
 
     // Set flash message cookie for success
-    (await cookies()).set(
+    (
+      await // Set flash message cookie for success
+      cookies()
+    ).set(
       "flash_message",
       JSON.stringify({
         type: "success",
@@ -127,12 +146,10 @@ export async function GET(req: Request) {
       { maxAge: 30 }
     );
 
-    // Redirect user to the homepage with a success message
     return NextResponse.redirect(new URL(`/`, req.url));
   } catch (error) {
     console.error("Error updating user and creating livestream:", error);
 
-    // Set flash message cookie for error
     (await cookies()).set(
       "flash_message",
       JSON.stringify({

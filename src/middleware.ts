@@ -17,7 +17,7 @@ const isPublicRoute = createRouteMatcher([
 export default clerkMiddleware(async (auth, request) => {
   // Check if the route is not public
   if (!isPublicRoute(request)) {
-    if (request.url.startsWith("/api")) {
+    if (request.url.startsWith("/api/")) {
       // Redirect all /api requests (except /api/webhooks/clerk) to homepage
       return Response.redirect("/", 302);
     }
@@ -28,6 +28,7 @@ export default clerkMiddleware(async (auth, request) => {
 export const config = {
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico).*)", // Apply Clerk auth globally except for assets
-    "/api/(.*)", // Ensure all API routes run through middleware
+    "/api/(.*)",
+    // Ensure all API routes run through middleware
   ],
 };

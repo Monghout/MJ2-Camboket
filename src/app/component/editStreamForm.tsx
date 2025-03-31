@@ -67,6 +67,7 @@ export default function EditStreamForm({
     "Sports",
     "Health",
     "Beauty",
+    "Drinks",
   ];
 
   // Handle product updates
@@ -120,7 +121,7 @@ export default function EditStreamForm({
   const addNewProduct = () => {
     setProducts([
       ...products,
-      { name: "", image: "", price: 0, description: "", feature: false },
+      { name: "", image: "", price: 0.0, description: "", feature: false },
     ]);
   };
 
