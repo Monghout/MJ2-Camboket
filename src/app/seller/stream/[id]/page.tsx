@@ -40,6 +40,7 @@ export default function StreamPage() {
   const [muxStreams, setMuxStreams] = useState<any[]>([]);
   const [playerKey, setPlayerKey] = useState(0);
   const [userToken, setUserToken] = useState<string | null>(null);
+  const [isSwitchingMode, setIsSwitchingMode] = useState(false);
 
   // Determine mode from URL
   const isDisplayMode =
@@ -51,13 +52,16 @@ export default function StreamPage() {
     status: null as NodeJS.Timeout | null,
     player: null as NodeJS.Timeout | null,
   });
+
   const switchToDisplayMode = async () => {
+    if (!stream) return;
+
     try {
-      setLoading(true);
+      setIsSwitchingMode(true);
       const response = await fetch(`/api/live/${id}/toggle-status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isLive: false }), // Set isLive to false for display mode
+        body: JSON.stringify({ isLive: false }),
       });
 
       if (!response.ok) throw new Error("Failed to activate display mode");
@@ -70,9 +74,10 @@ export default function StreamPage() {
       toast.error("Failed to switch to display mode");
       console.error(error);
     } finally {
-      setLoading(false);
+      setIsSwitchingMode(false);
     }
   };
+
   // Redirect to display mode if stream is offline
   useEffect(() => {
     if (stream && !stream.isLive && !isDisplayMode) {
@@ -129,7 +134,7 @@ export default function StreamPage() {
       if (!response.ok) return;
 
       const data = await response.json();
-      setMuxStreams(data.liveStreams);
+      setMuxStreams(data.liveStreams || []);
 
       if (stream?.liveStreamId) {
         const matchedStream = data.liveStreams.find(
@@ -162,7 +167,7 @@ export default function StreamPage() {
 
   // Follow/unfollow handler
   const handleFollowToggle = async () => {
-    if (!user) return;
+    if (!user || !stream) return;
 
     try {
       const method = isFollowing ? "DELETE" : "POST";
@@ -199,7 +204,7 @@ export default function StreamPage() {
 
   // Remove product handler
   const handleRemoveProduct = async (productId: string) => {
-    if (!user) {
+    if (!user || !stream) {
       toast.error("Please sign in to manage products");
       return;
     }
@@ -215,7 +220,7 @@ export default function StreamPage() {
 
       setStream((prev: any) => ({
         ...prev,
-        products: prev.products.filter((p: any) => p._id !== productId),
+        products: (prev.products || []).filter((p: any) => p._id !== productId),
       }));
       toast.success("Product removed successfully");
     } catch (error) {
@@ -223,7 +228,7 @@ export default function StreamPage() {
     }
   };
 
-  if (loading) return <LoadingSkeleton />;
+  if (loading || !stream || !seller) return <LoadingSkeleton />;
   if (!stream) return notFound();
 
   const isSeller = user?.id === seller?.clerkId;
@@ -231,6 +236,7 @@ export default function StreamPage() {
   const isGuest = !user;
   const matchedStream = muxStreams.find((ms) => ms.id === stream.liveStreamId);
   const isLive = matchedStream?.status === "active";
+  const products = stream.products || [];
 
   return (
     <div className="dark bg-background min-h-screen">
@@ -242,16 +248,16 @@ export default function StreamPage() {
             className="h-24 w-48 cursor-pointer"
             alt="Logo"
           />
-        </Link>{" "}
+        </Link>
         {!isDisplayMode && isSeller && (
           <Button
             onClick={switchToDisplayMode}
             variant="outline"
             className="mt-4"
-            disabled={loading}
+            disabled={isSwitchingMode || loading}
           >
             <Image className="h-4 w-4 mr-2" />
-            {loading ? "Switching..." : "Switch to Display Mode"}
+            {isSwitchingMode ? "Switching..." : "Switch to Display Mode"}
           </Button>
         )}
       </div>
@@ -284,9 +290,9 @@ export default function StreamPage() {
                 </div>
 
                 {/* Featured Products as Main Component */}
-                {stream.products?.length > 0 && (
+                {products.length > 0 && (
                   <FeaturedProducts
-                    products={stream.products}
+                    products={products}
                     className="w-full"
                     isSeller={isSeller}
                     onRemoveProduct={handleRemoveProduct}
@@ -367,7 +373,7 @@ export default function StreamPage() {
               description={stream.description}
               category={stream.category}
               createdAt={stream.createdAt}
-              products={stream.products}
+              products={products}
               isSeller={isSeller}
               onRemoveProduct={handleRemoveProduct}
             />
@@ -425,8 +431,12 @@ export default function StreamPage() {
             )}
 
             {/* Featured Products in Video Mode (visible to all) */}
-            {!isDisplayMode && stream.products?.length > 0 && (
-              <FeaturedProducts products={stream.products} />
+            {!isDisplayMode && products.length > 0 && (
+              <FeaturedProducts
+                products={products}
+                isSeller={isSeller}
+                onRemoveProduct={handleRemoveProduct}
+              />
             )}
 
             <div className="p-6">

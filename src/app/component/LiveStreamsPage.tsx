@@ -44,6 +44,7 @@ interface Stream {
   liveStreamId?: string;
   sellerId?: string;
   category?: string;
+  isLive?: boolean;
 }
 
 interface MuxStream {
@@ -113,13 +114,40 @@ export default function LiveStreamsPage() {
       setLoading(false);
     }
   }, []);
+  const fetchStreamsOnly = useCallback(async () => {
+    try {
+      const streamRes = await fetch("/api/live/streams");
+      if (!streamRes.ok) return; // Silently fail if error occurs
 
+      const streamData = await streamRes.json();
+      const enhancedStreams = streamData.streams.map((stream: Stream) => {
+        const user = users.find(
+          (user: User) =>
+            user._id === stream.sellerId || user.clerkId === stream.sellerId
+        );
+        return {
+          ...stream,
+          sellerPhoto: user?.photo,
+          sellerName: user?.name || stream.sellerName,
+        };
+      });
+
+      setStreams(enhancedStreams);
+    } catch (err) {
+      console.error("Failed to refresh streams:", err);
+    }
+  }, [users]);
   // Initial fetch
   useEffect(() => {
     if (!isLoaded) return;
     fetchData();
   }, [fetchData, isLoaded]);
+  useEffect(() => {
+    if (!isLoaded) return;
 
+    const streamPollingInterval = setInterval(fetchStreamsOnly, 2000);
+    return () => clearInterval(streamPollingInterval);
+  }, [fetchStreamsOnly, isLoaded]);
   // Mux status monitoring
   useEffect(() => {
     const checkForStatusChange = async () => {
@@ -140,11 +168,16 @@ export default function LiveStreamsPage() {
     };
   }, []);
 
-  // Filter live streams with enhanced search
-  const liveStreams = streams
+  // Filter streams based on isLive and Mux status
+  const filteredStreams = streams
     .filter((stream) => {
-      const muxStream = muxStreams.find((ms) => ms.id === stream.liveStreamId);
-      return muxStream?.status === "active";
+      if (stream.isLive) {
+        const muxStream = muxStreams.find(
+          (ms) => ms.id === stream.liveStreamId
+        );
+        return muxStream?.status === "active";
+      }
+      return true; // Show all non-live streams
     })
     .filter((stream) => {
       if (selectedCategory !== "all" && stream.category !== selectedCategory) {
@@ -154,18 +187,12 @@ export default function LiveStreamsPage() {
       if (!searchQuery) return true;
 
       const query = searchQuery.toLowerCase();
-
-      // Check stream title and seller name
-      if (
+      return (
         stream.title.toLowerCase().includes(query) ||
-        stream.sellerName?.toLowerCase().includes(query)
-      ) {
-        return true;
-      }
-
-      // Check product names
-      return stream.products.some((product) =>
-        product.name.toLowerCase().includes(query)
+        stream.sellerName?.toLowerCase().includes(query) ||
+        stream.products.some((product) =>
+          product.name.toLowerCase().includes(query)
+        )
       );
     });
 
@@ -193,7 +220,7 @@ export default function LiveStreamsPage() {
         <h1 className="text-3xl font-bold">Live Streams</h1>
         <div className="flex items-center gap-4">
           <Badge variant="outline" className="px-3 py-1 text-sm font-medium">
-            {liveStreams.length} Live Now
+            {filteredStreams.filter((s) => s.isLive).length} Live Now
           </Badge>
           <Button
             variant="outline"
@@ -259,12 +286,12 @@ export default function LiveStreamsPage() {
             </Card>
           ))}
         </div>
-      ) : liveStreams.length === 0 ? (
+      ) : filteredStreams.length === 0 ? (
         <div className="text-center py-20">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
             <Play className="h-8 w-8 text-gray-400" />
           </div>
-          <h2 className="text-xl font-semibold mb-2">No Live Streams Found</h2>
+          <h2 className="text-xl font-semibold mb-2">No Streams Found</h2>
           <p className="text-gray-500">
             {searchQuery || selectedCategory !== "all"
               ? "Try adjusting your search or filters"
@@ -273,7 +300,7 @@ export default function LiveStreamsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {liveStreams.map((stream) => (
+          {filteredStreams.map((stream) => (
             <StreamCardWithAuthRouting key={stream._id} stream={stream} />
           ))}
         </div>
@@ -287,7 +314,6 @@ function StreamCardWithAuthRouting({ stream }: { stream: Stream }) {
   const { isSignedIn } = useUser();
 
   const handleClick = () => {
-    // Route to guest view if not signed in
     const path = isSignedIn
       ? `/seller/stream/${stream._id}`
       : `/sellerGuest/stream/${stream._id}`;
@@ -311,14 +337,9 @@ function StreamCard({
     const now = new Date();
     const diffMs = now.getTime() - startTime.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 60) {
-      return `${diffMins}m`;
-    } else {
-      const hours = Math.floor(diffMins / 60);
-      const mins = diffMins % 60;
-      return `${hours}h ${mins}m`;
-    }
+    return diffMins < 60
+      ? `${diffMins}m`
+      : `${Math.floor(diffMins / 60)}h ${diffMins % 60}m`;
   };
 
   return (
@@ -327,20 +348,35 @@ function StreamCard({
       onClick={onClick}
     >
       <div className="relative">
-        <ImageSlider
-          images={stream.products.map((product) => product.image)}
-          thumbnail={stream.thumbnail}
-        />
-
-        <div className="absolute top-3 left-3 z-10">
-          <Badge className="bg-red-600 text-white hover:bg-red-700 px-2 py-1 flex items-center gap-1">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-black opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-black"></span>
-            </span>
-            LIVE
-          </Badge>
-        </div>
+        {stream.isLive ? (
+          // Live Stream Mode
+          <div className="w-full h-64 bg-black">
+            <Image
+              src={stream.thumbnail || "/placeholder.svg"}
+              alt={stream.title}
+              fill
+              className="object-cover"
+            />
+            <Badge className="absolute top-3 left-3 bg-red-600 text-white hover:bg-red-700 px-2 py-1 flex items-center gap-1">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+              </span>
+              LIVE NOW
+            </Badge>
+          </div>
+        ) : (
+          // Display Mode
+          <>
+            <ImageSlider
+              images={stream.products.map((product) => product.image)}
+              thumbnail={stream.thumbnail}
+            />
+            <Badge className="absolute top-3 left-3 bg-blue-600 text-white hover:bg-blue-700 px-2 py-1">
+              DISPLAY MODE
+            </Badge>
+          </>
+        )}
       </div>
 
       <CardContent className="p-4">
@@ -355,7 +391,7 @@ function StreamCard({
             </Avatar>
             <span className="text-sm text-gray-600">{stream.sellerName}</span>
           </div>
-          {stream.startedAt && (
+          {stream.startedAt && stream.isLive && (
             <span className="text-xs text-gray-500">
               {getTimeSince(stream.startedAt)}
             </span>
@@ -367,10 +403,14 @@ function StreamCard({
         <span className="text-xs text-gray-500">
           {stream.products.length} products
         </span>
-        {stream.viewerCount && (
-          <span className="text-xs text-gray-500">
-            {stream.viewerCount} viewers
-          </span>
+        {stream.isLive ? (
+          stream.viewerCount ? (
+            <span className="text-xs text-gray-500">
+              {stream.viewerCount} viewers
+            </span>
+          ) : null
+        ) : (
+          <span className="text-xs text-gray-500">Display Mode</span>
         )}
       </CardFooter>
     </Card>
@@ -388,21 +428,16 @@ function ImageSlider({
   const [isHovered, setIsHovered] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Filter out the thumbnail from product images if it exists in the array
   const productImages = images.filter((img) => img !== thumbnail && img);
 
-  // Reset index when hover state changes
   useEffect(() => {
     setCurrentIndex(0);
-
-    // Clear any existing interval when hover state changes
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
   }, [isHovered]);
 
-  // Auto-slide functionality - only when hovering
   useEffect(() => {
     if (isHovered && productImages.length > 1) {
       intervalRef.current = setInterval(() => {
@@ -443,7 +478,6 @@ function ImageSlider({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Show thumbnail when not hovering */}
       {!isHovered && (
         <div className="absolute inset-0">
           <Image
@@ -456,7 +490,6 @@ function ImageSlider({
         </div>
       )}
 
-      {/* Show product images when hovering */}
       {isHovered && productImages.length > 0 && (
         <div className="relative w-full h-full">
           {productImages.map((src, index) => (
@@ -478,28 +511,23 @@ function ImageSlider({
         </div>
       )}
 
-      {/* Image indicators - only show when hovering and there are multiple product images */}
-      {isHovered && productImages.length > 1 && (
-        <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1 z-10">
-          {productImages.map((_, index) => (
-            <button
-              key={index}
-              className={`h-1.5 rounded-full transition-all ${
-                currentIndex === index ? "w-6 bg-black" : "w-1.5 bg-black/50"
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setCurrentIndex(index);
-              }}
-              aria-label={`Go to product image ${index + 1}`}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Navigation controls - only show when hovering and there are multiple product images */}
       {isHovered && productImages.length > 1 && (
         <>
+          <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1 z-10">
+            {productImages.map((_, index) => (
+              <button
+                key={index}
+                className={`h-1.5 rounded-full transition-all ${
+                  currentIndex === index ? "w-6 bg-black" : "w-1.5 bg-black/50"
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentIndex(index);
+                }}
+                aria-label={`Go to product image ${index + 1}`}
+              />
+            ))}
+          </div>
           <Button
             variant="ghost"
             size="icon"
