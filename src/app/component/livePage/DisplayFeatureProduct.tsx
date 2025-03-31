@@ -111,7 +111,7 @@ export default function CinematicFeatured({
               <div className="relative aspect-[21/9] overflow-hidden group">
                 {/* Product Image */}
                 <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-                  <div className="relative w-full h-full rounded-lg object-contain">
+                  <div className="relative w-full h-full max-w max-h-[800px] mx-auto">
                     <Image
                       src={
                         product.image ||
@@ -119,7 +119,7 @@ export default function CinematicFeatured({
                       }
                       alt={product.name}
                       fill
-                      className="object-cover grayscale brightness-[0.4] transition-all duration-1000 ease-out transform scale-100 group-hover:scale-105 group-hover:brightness-[0.3]"
+                      className="rounded-lg object-contain grayscale brightness-[0.4] transition-all duration-1000 ease-out transform scale-100 group-hover:scale-105 group-hover:brightness-[0.3]"
                       priority
                       sizes="(max-width: 1600px) 100vw, 1600px"
                     />

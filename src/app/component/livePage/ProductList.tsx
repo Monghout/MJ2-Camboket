@@ -28,7 +28,7 @@ export default function ProductList({
                 <img
                   src={product.image || "/placeholder.svg"}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full rounded-lg object-contain"
                 />
                 <div className="absolute bottom-0 right-0 p-2">
                   <Badge
