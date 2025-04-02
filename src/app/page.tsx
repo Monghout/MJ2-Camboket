@@ -6,7 +6,7 @@ import { SignedOut } from "@clerk/nextjs/dist/types/components.server";
 
 export default function GuestHomePage() {
   return (
-    <div className="bg-black ">
+    <div className="bg-neutral-900">
       <Header />
       <Body />
       <Footer />

@@ -17,7 +17,7 @@ export default function RoleOverlay({
   return (
     <div className="fixed inset-0 border-white bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
       <div
-        className="bg-black p-6 rounded shadow-lg max-w-md w-full border-2"
+        className="bg-neutral-900 p-6 rounded shadow-lg max-w-md w-full border-2"
         style={{ borderColor: "rgba(255, 255, 255, 0.6)" }}
       >
         <h2 className="text-xl font-bold mb-4">Subscription & Role Info</h2>

@@ -215,7 +215,7 @@ export default function LiveStreamsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto p-6 ">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Live Streams</h1>
         <div className="flex items-center gap-4">
@@ -229,28 +229,32 @@ export default function LiveStreamsPage() {
             disabled={loading}
             aria-label="Refresh streams"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`h-4 w-4 bg-neutral-900 ${
+                loading ? "animate-spin" : ""
+              }`}
+            />
           </Button>
         </div>
       </div>
 
       {/* Search and Filter */}
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
-        <div className="relative flex-grow">
+      <div className="flex flex-col md:flex-row gap-4 mb-8 ">
+        <div className="relative flex-grow bg-neutral-900">
           <Input
             type="text"
-            placeholder="Search streams, sellers, or products"
-            className="pl-10 pr-4 py-2 w-full"
+            placeholder="Search sellers or products"
+            className="pl-10 pr-4 py-2 w-full bg-neutral-900"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           <Search
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 bg-neutral-900"
             size={20}
           />
         </div>
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px] bg-neutral-900">
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
           <SelectContent>
@@ -266,18 +270,23 @@ export default function LiveStreamsPage() {
 
       {/* Content */}
       {error ? (
-        <div className="text-center py-20">
+        <div className="text-center py-20  ">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
-            <Play className="h-8 w-8 text-red-600" />
+            <Play className="h-8 w-8 text-red-600 " />
           </div>
-          <h2 className="text-xl font-semibold mb-2">Error Loading Streams</h2>
-          <p className="text-gray-500 mb-4">{error}</p>
+          <h2 className="text-xl font-semibold mb-2  ">
+            Error Loading Streams
+          </h2>
+          <p className="text-gray-500 mb-4 ">{error}</p>
           <Button onClick={fetchData}>Retry</Button>
         </div>
       ) : loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-neutral-900">
           {[...Array(3)].map((_, i) => (
-            <Card key={i} className="overflow-hidden border border-gray-200">
+            <Card
+              key={i}
+              className="overflow-hidden border border-gray-200 bg-neutral-900"
+            >
               <div className="h-64 bg-gray-200 animate-pulse" />
               <CardContent className="p-4 space-y-2">
                 <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
@@ -287,7 +296,7 @@ export default function LiveStreamsPage() {
           ))}
         </div>
       ) : filteredStreams.length === 0 ? (
-        <div className="text-center py-20">
+        <div className="text-center py-20 ">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
             <Play className="h-8 w-8 text-gray-400" />
           </div>
@@ -344,18 +353,18 @@ function StreamCard({
 
   return (
     <Card
-      className="overflow-hidden hover:shadow-lg transition-all duration-300 border border-black hover:border-gray-300 cursor-pointer"
+      className="overflow-hidden hover:shadow-lg transition-all  duration-300 border border-black hover:border-gray-300 cursor-pointer "
       onClick={onClick}
     >
       <div className="relative">
         {stream.isLive ? (
           // Live Stream Mode
-          <div className="w-full h-64 bg-black">
+          <div className="w-full h-full bg-neutral-900">
             <Image
               src={stream.thumbnail || "/placeholder.svg"}
               alt={stream.title}
               fill
-              className="object-cover"
+              className="rounded-lg object-contain"
             />
             <Badge className="absolute top-3 left-3 bg-red-600 text-white hover:bg-red-700 px-2 py-1 flex items-center gap-1">
               <span className="relative flex h-2 w-2">
@@ -389,18 +398,18 @@ function StreamCard({
               <AvatarImage src={stream.sellerPhoto} alt={stream.sellerName} />
               <AvatarFallback>{stream.sellerName?.[0]}</AvatarFallback>
             </Avatar>
-            <span className="text-sm text-gray-600">{stream.sellerName}</span>
+            <span className="text-sm text-white">{stream.sellerName}</span>
           </div>
           {stream.startedAt && stream.isLive && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-white">
               {getTimeSince(stream.startedAt)}
             </span>
           )}
         </div>
       </CardContent>
 
-      <CardFooter className="p-3 bg-black flex justify-between items-center">
-        <span className="text-xs text-gray-500">
+      <CardFooter className="p-3  bg-black flex justify-between items-center">
+        <span className="text-xs text-white ">
           {stream.products.length} products
         </span>
         {stream.isLive ? (
@@ -410,7 +419,7 @@ function StreamCard({
             </span>
           ) : null
         ) : (
-          <span className="text-xs text-gray-500">Display Mode</span>
+          <span className="text-xs text-white">Display Mode</span>
         )}
       </CardFooter>
     </Card>
@@ -474,12 +483,12 @@ function ImageSlider({
 
   return (
     <div
-      className="relative w-full h-64 overflow-hidden bg-black"
+      className="relative w-full h-64 overflow-hidden bg-black "
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {!isHovered && (
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 ">
           <Image
             src={thumbnail || "/placeholder.svg"}
             alt="Stream thumbnail"
@@ -503,7 +512,7 @@ function ImageSlider({
                 src={src || "/placeholder.svg"}
                 alt={`Product image ${index + 1}`}
                 fill
-                className="object-cover"
+                className="rounded-lg object-contain"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
             </div>
@@ -513,12 +522,14 @@ function ImageSlider({
 
       {isHovered && productImages.length > 1 && (
         <>
-          <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1 z-10">
+          <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1 z-10 ">
             {productImages.map((_, index) => (
               <button
                 key={index}
                 className={`h-1.5 rounded-full transition-all ${
-                  currentIndex === index ? "w-6 bg-black" : "w-1.5 bg-black/50"
+                  currentIndex === index
+                    ? "w-6 bg-neutral-900"
+                    : "w-1.5 bg-neutral-900"
                 }`}
                 onClick={(e) => {
                   e.stopPropagation();

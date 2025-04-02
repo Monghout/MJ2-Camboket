@@ -9,7 +9,7 @@ export default function Header() {
   const { user, isLoaded } = useUser();
 
   return (
-    <div className="bg-black text-white px-4 py-6">
+    <div className="bg-black/10 text-white px-8 py-6 animate-glow">
       <header className="grid grid-cols-3 items-center text-center">
         {/* Left - Logo */}
         <div className="flex justify-start">

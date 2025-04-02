@@ -183,7 +183,7 @@ export default function FeaturedSection() {
   }
 
   return (
-    <div className="w-full bg-gradient-to-br rounded-xl overflow-hidden p-4 shadow-2xl">
+    <div className="w-full bg-gradient-to-br rounded-xl overflow-hidden p-4 shadow-sm relative min-h-[300px] border-transparent animate-glow">
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-2xl font-bold text-white flex items-center">
           <span className="bg-white w-2 h-6 mr-3 rounded-sm inline-block"></span>

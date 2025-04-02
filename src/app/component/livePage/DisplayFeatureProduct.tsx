@@ -137,7 +137,7 @@ export default function CinematicFeatured({
                       </p>
                     </div>
 
-                    <h3 className="text-5xl md:text-7xl lg:text-8xl font-light tracking-tight text-white leading-none max-w-4xl">
+                    <h3 className="text-3xl md:text-7xl lg:text-8xl font-light tracking-tight text-white leading-none max-w-4xl">
                       {product.name}
                     </h3>
                   </div>
@@ -147,7 +147,7 @@ export default function CinematicFeatured({
                 <div className="absolute inset-x-0 bottom-0 transform transition-transform duration-700 ease-out group-hover:translate-y-0 translate-y-full">
                   <div className="max-w-7xl mx-auto p-4 md:p-6">
                     <div className="space-y-6">
-                      <p className="text-base md:text-xl text-white/80 leading-relaxed max-w-2xl">
+                      <p className="text-base md:text-xl text-white/80 leading-relaxed max-w-7xl">
                         {product.description}
                       </p>
                       <Badge className="bg-emerald-600">
