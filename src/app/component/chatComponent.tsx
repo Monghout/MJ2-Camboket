@@ -219,15 +219,19 @@ const ChatOverlay = ({
     >
       {/* Header */}
       <div
-        className="bg-black text-white p-4 flex justify-between items-center border-b rounded-lg border-white/20 cursor-pointer transition-all duration-500 border-2 hover:border-white"
+        className="bg-white text-black p-4 flex justify-between items-center border-b rounded-lg border-white/20 cursor-pointer transition-all duration-500 border-2 hover:border-white/30"
         onClick={toggleMinimize}
       >
         <div className="flex items-center gap-3 truncate">
           <MessageSquare className="h-6 w-6 flex-shrink-0" />
           {!isMinimized && <span className="font-semibold text-xl">Chat</span>}
           {isMinimized && (
-            <span className="font-semibold text-sm truncate">Chat</span>
-          )}
+            <span className="font-semibold text-md truncate">
+              Talk to Seller
+            </span>
+          )}{" "}
+          <div className="absolute w-3 h-3 rounded-full bg-green-400 opacity-75 animate-ping"></div>
+          <div className="relative w-2 h-2 rounded-full bg-green-500 animate-bounce"></div>
         </div>
         <div className="flex items-center gap-3"></div>
       </div>

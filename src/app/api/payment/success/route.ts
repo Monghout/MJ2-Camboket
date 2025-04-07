@@ -58,7 +58,7 @@ export async function GET(req: Request) {
             Authorization: `Basic ${auth}`,
           },
           body: JSON.stringify({
-            latency_mode: "reduced",
+            latency_mode: "low",
             playback_policy: ["public"],
             new_asset_settings: { playback_policy: ["public"] },
           }),

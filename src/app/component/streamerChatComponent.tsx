@@ -169,7 +169,9 @@ const StreamerChatOverlay = ({
           {!isMinimized && <span className="font-semibold text-xl">Chats</span>}
           {isMinimized && (
             <span className="font-semibold text-sm truncate">Chats</span>
-          )}
+          )}{" "}
+          <div className="absolute w-3 h-3 rounded-full bg-green-400 opacity-75 animate-ping"></div>
+          <div className="relative w-2 h-2 rounded-full bg-green-500 animate-bounce"></div>
         </div>
         <div className="flex items-center gap-3"></div>
       </div>

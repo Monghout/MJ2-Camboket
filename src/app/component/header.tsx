@@ -4,7 +4,7 @@ import { SignInButton, UserButton } from "@clerk/nextjs";
 import { useUser } from "@clerk/nextjs";
 import CheckoutButton from "./payment-button";
 import Link from "next/link";
-
+import ModeToggle from "@/app/component/DarkModebutton";
 export default function Header() {
   const { user, isLoaded } = useUser();
 

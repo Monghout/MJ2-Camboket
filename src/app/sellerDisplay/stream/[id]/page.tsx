@@ -4,7 +4,7 @@ import { notFound, useParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Copy, WifiOff, Video } from "lucide-react";
+import { Copy, WifiOff, Video, Info } from "lucide-react";
 
 // Components
 import { StreamChatProvider } from "@/app/provider/chat";
@@ -21,6 +21,7 @@ import MapOverlay from "@/app/component/MapOverlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import InstructionOverlay from "@/app/component/instruction";
 
 const apiKey = process.env.NEXT_PUBLIC_STREAM_CHAT_API_KEY!;
 
@@ -39,6 +40,7 @@ export default function StreamPage() {
   const [userToken, setUserToken] = useState<string | null>(null);
   const [isDisplayMode, setIsDisplayMode] = useState(false);
   const [isSwitchingMode, setIsSwitchingMode] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
 
   // Check if we're in display mode based on route
   useEffect(() => {
@@ -58,7 +60,51 @@ export default function StreamPage() {
   const intervalRefs = useRef({
     status: null as NodeJS.Timeout | null,
   });
+  // Function to toggle stream status based on Mux status
+  const toggleStreamStatusBasedOnMux = async () => {
+    if (!stream?.liveStreamId) return;
 
+    try {
+      // Find the matching Mux stream
+      const matchedStream = muxStreams.find(
+        (ms) => ms.id === stream.liveStreamId
+      );
+      const shouldBeLive = matchedStream?.status === "active";
+
+      // Only proceed if current status doesn't match Mux status
+      if (stream.isLive !== shouldBeLive) {
+        const response = await fetch(`/api/live/${id}/toggle-status`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isLive: shouldBeLive }),
+        });
+
+        if (!response.ok) throw new Error("Failed to update stream status");
+
+        const updatedStream = await response.json();
+        setStream(updatedStream);
+
+        // If switching from display to video mode and stream is live
+        if (isDisplayMode && shouldBeLive) {
+          router.push(`/seller/stream/${id}`);
+        }
+
+        toast.success(
+          `Stream status updated to ${shouldBeLive ? "LIVE" : "OFFLINE"}`
+        );
+      }
+    } catch (error) {
+      console.error("Error toggling stream status:", error);
+      toast.error("Failed to update stream status");
+    }
+  };
+
+  // Call this function whenever Mux data is fetched
+  useEffect(() => {
+    if (muxStreams.length > 0 && stream?.liveStreamId) {
+      toggleStreamStatusBasedOnMux();
+    }
+  }, [muxStreams, stream?.liveStreamId]);
   // Switch to video mode
   const switchToVideoMode = async () => {
     if (!stream) return;
@@ -398,6 +444,7 @@ export default function StreamPage() {
                 products={products}
                 isSeller={isSeller}
                 onRemoveProduct={handleRemoveProduct}
+                livestreamId={stream._id}
               />
               <div className="max-w-7xl mx-auto ">{/* Seller Info */}</div>{" "}
               {/* Seller Controls */}
@@ -418,7 +465,21 @@ export default function StreamPage() {
                         disabled={isCopyDisabled}
                       >
                         <Copy className="h-4 w-4" />
+                      </Button>{" "}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setShowOverlay(true)}
+                      >
+                        <Info className="h-4 w-4" />
                       </Button>
+                      {/* Conditionally render the overlay */}
+                      {showOverlay && (
+                        <InstructionOverlay
+                          onClose={() => setShowOverlay(false)}
+                          streamKey={stream.streamKey}
+                        />
+                      )}
                     </div>
                     <p className="text-sm text-gray-400">
                       Use this in your streaming software (OBS, etc.)

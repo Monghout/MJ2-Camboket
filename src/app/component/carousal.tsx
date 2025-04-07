@@ -13,7 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Pause, Play } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { SignInButton } from "@clerk/nextjs";
 
 interface Seller {
   _id: string;
@@ -56,6 +55,16 @@ export default function FeaturedSection() {
   const [isPaused, setIsPaused] = useState(false);
   const [current, setCurrent] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
+
+  const getFilteredProducts = useCallback(() => {
+    if (!selectedSellerId) {
+      return featuredProducts;
+    }
+    return featuredProducts.filter(
+      (product) => product.sellerId === selectedSellerId
+    );
+  }, [featuredProducts, selectedSellerId]);
 
   // Set up carousel API
   const onSelect = useCallback(() => {
@@ -74,11 +83,11 @@ export default function FeaturedSection() {
 
   // Auto-scroll functionality with infinite loop
   useEffect(() => {
-    if (!api || isPaused || featuredProducts.length <= 1) return;
+    if (!api || isPaused || getFilteredProducts().length <= 1) return;
 
     const startAutoScroll = () => {
       intervalRef.current = setInterval(() => {
-        if (current === featuredProducts.length - 1) {
+        if (current === getFilteredProducts().length - 1) {
           api.scrollTo(0); // Loop back to first slide
         } else {
           api.scrollNext();
@@ -93,7 +102,7 @@ export default function FeaturedSection() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [api, isPaused, featuredProducts.length, current]);
+  }, [api, isPaused, getFilteredProducts, current]);
 
   // Toggle pause/play
   const togglePause = () => {
@@ -174,6 +183,10 @@ export default function FeaturedSection() {
     }, []);
   };
 
+  useEffect(() => {
+    setSelectedSellerId(null);
+  }, [featuredProducts]);
+
   if (!isLoaded) {
     return (
       <div className="w-full bg-gradient-to-br rounded-xl overflow-hidden p-4 shadow-2xl min-h-[300px] flex items-center justify-center">
@@ -206,6 +219,53 @@ export default function FeaturedSection() {
         )}
       </div>
 
+      {/* Enhanced seller filter buttons */}
+      {featuredProducts.length > 0 && (
+        <div className="mb-6 overflow-x-auto pb-2 -mx-4 px-4">
+          <div className="flex gap-3 min-w-max">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedSellerId(null)}
+              className={`rounded-full px-4 py-2 h-auto font-medium transition-all duration-300 ${
+                selectedSellerId === null
+                  ? "bg-white text-black shadow-lg"
+                  : "bg-black/30 text-white/90 backdrop-blur-sm border border-white/10 hover:bg-white/20"
+              }`}
+            >
+              All Products
+            </Button>
+            {sellers
+              .filter((seller) =>
+                featuredProducts.some(
+                  (product) => product.sellerId === seller._id
+                )
+              )
+              .map((seller) => (
+                <Button
+                  key={seller._id}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedSellerId(seller._id)}
+                  className={`rounded-full px-4 py-2 h-auto font-medium transition-all duration-300 flex items-center gap-2 ${
+                    selectedSellerId === seller._id
+                      ? "bg-white text-black shadow-lg"
+                      : "bg-black/30 text-white/90 backdrop-blur-sm border border-white/10 hover:bg-white/10"
+                  }`}
+                >
+                  <Avatar className="h-5 w-5 border border-white/20">
+                    <AvatarImage src={seller.photo} alt={seller.name} />
+                    <AvatarFallback className="text-[10px]">
+                      {seller.name[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  {seller.name}
+                </Button>
+              ))}
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="min-h-[300px] flex items-center justify-center">
           <p className="text-white">Loading products...</p>
@@ -222,7 +282,7 @@ export default function FeaturedSection() {
         <div className="relative">
           <Carousel className="w-full" setApi={setApi}>
             <CarouselContent>
-              {featuredProducts.map((product) => {
+              {getFilteredProducts().map((product) => {
                 const seller = sellers.find((s) => s._id === product.sellerId);
 
                 return (
@@ -243,11 +303,14 @@ export default function FeaturedSection() {
                           src={product.image || "/placeholder.svg"}
                           alt={product.description}
                           fill
-                          className="rounded-lg object-contain"
+                          className="rounded-lg object-contain transition-all duration-300 group-hover:opacity-40"
                           priority
                         />
 
-                        <div className="absolute inset-0 flex flex-col justify-end rounded-lg">
+                        {/* Black overlay that appears on hover */}
+                        <div className="absolute inset-0 bg-black opacity-0  transition-opacity duration-300 rounded-lg" />
+
+                        <div className="absolute inset-0 flex flex-col justify-end  rounded-lg">
                           <div className="transform transition-all duration-300">
                             <div className="p-2 group-hover:backdrop-blur-md">
                               <div className="flex justify-between items-start">
@@ -259,7 +322,7 @@ export default function FeaturedSection() {
                                 </div>
                               </div>
 
-                              <div className="mt-3 text-white/80 text-sm opacity-0 max-h-0 group-hover:opacity-100 group-hover:max-h-20 overflow-hidden transition-all duration-500">
+                              <div className="mt-3 text-white/80 text-xl opacity-0 max-h-0 group-hover:opacity-100 group-hover:max-h-20 overflow-hidden transition-all duration-500">
                                 <p>{product.description}</p>
                               </div>
 
@@ -289,12 +352,12 @@ export default function FeaturedSection() {
               })}
             </CarouselContent>
 
-            {featuredProducts.length > 1 && (
+            {getFilteredProducts().length > 1 && (
               <div
                 className="absolute right-4 top-1/4 -translate-y-1/2 flex flex-col gap-2 mt-0 z-10"
                 style={{ marginTop: "80px" }}
               >
-                {featuredProducts.map((_, index) => (
+                {getFilteredProducts().map((_, index) => (
                   <button
                     key={index}
                     className={`transition-all rounded-full ${

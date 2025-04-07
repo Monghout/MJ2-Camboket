@@ -163,7 +163,7 @@ body {
 .animate-glow {
   animation: glow 5s ease-in-out infinite;
 }
-/* @keyframes gradient-x {
+@keyframes gradient-x {
   0% {
     background-position: 0% 50%;
   }
@@ -178,4 +178,22 @@ body {
 .animate-gradient-x {
   background-size: 200% 200%;
   animation: gradient-x 3s ease infinite;
-} */
+}
+.animate-neon-border {
+  border: 2px solid #10b981;
+  border-radius: 0.375rem;
+  animation: neon-border 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes neon-border {
+  from {
+    border-color: #10b981;
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.3),
+      inset 0 0 5px rgba(16, 185, 129, 0.1);
+  }
+  to {
+    border-color: #a7f3d0;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.6),
+      inset 0 0 10px rgba(16, 185, 129, 0.3);
+  }
+}

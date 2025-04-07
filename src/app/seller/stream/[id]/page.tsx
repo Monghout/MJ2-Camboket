@@ -4,7 +4,7 @@ import { notFound, useParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Copy, Video, WifiOff } from "lucide-react";
+import { Copy, Info, Video, WifiOff } from "lucide-react";
 
 // Components
 import { StreamChatProvider } from "@/app/provider/chat";
@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Image } from "lucide-react";
+import InstructionOverlay from "@/app/component/instruction";
 
 const apiKey = process.env.NEXT_PUBLIC_STREAM_CHAT_API_KEY!;
 
@@ -41,6 +42,7 @@ export default function StreamPage() {
   const [playerKey, setPlayerKey] = useState(0);
   const [userToken, setUserToken] = useState<string | null>(null);
   const [isSwitchingMode, setIsSwitchingMode] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
 
   // Determine mode from URL
   const isDisplayMode =
@@ -293,7 +295,7 @@ export default function StreamPage() {
                 {products.length > 0 && (
                   <FeaturedProducts
                     products={products}
-                    className="w-full"
+                    className="w-full "
                     isSeller={isSeller}
                     onRemoveProduct={handleRemoveProduct}
                   />
@@ -311,7 +313,7 @@ export default function StreamPage() {
                   />
 
                   {!isLive && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-white p-4">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/100 text-white p-4">
                       <WifiOff className="h-12 w-12 mb-4 text-red-500" />
                       <h3 className="text-xl font-semibold">Stream Offline</h3>
                       <p className="text-gray-400 mt-2 text-center">
@@ -376,6 +378,7 @@ export default function StreamPage() {
               products={products}
               isSeller={isSeller}
               onRemoveProduct={handleRemoveProduct}
+              livestreamId={stream._id}
             />
 
             {/* Seller Controls */}
@@ -396,7 +399,25 @@ export default function StreamPage() {
                       disabled={isCopyDisabled}
                     >
                       <Copy className="h-4 w-4" />
-                    </Button>
+                    </Button>{" "}
+                    <div className="relative">
+                      {/* Your main content here */}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setShowOverlay(true)}
+                      >
+                        <Info className="h-4 w-4" />
+                      </Button>
+
+                      {/* Conditionally render the overlay */}
+                      {showOverlay && (
+                        <InstructionOverlay
+                          onClose={() => setShowOverlay(false)}
+                          streamKey={stream.streamKey}
+                        />
+                      )}
+                    </div>
                   </div>
                   <p className="text-sm text-gray-400">
                     Use this in your streaming software (OBS, etc.)

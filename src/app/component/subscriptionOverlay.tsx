@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import { X } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import { useUser } from "@clerk/nextjs";
+import FeaturedProducts from "./livePage/FeaturedProducts";
 
 const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
@@ -15,7 +16,7 @@ interface OverlaySubscriptionProps {
 const OverlaySubscription: React.FC<OverlaySubscriptionProps> = ({
   onClose,
 }) => {
-  const { user } = useUser(); // Get user directly inside the component
+  const { user } = useUser();
 
   useEffect(() => {
     console.log("User Info:", user);
@@ -48,8 +49,8 @@ const OverlaySubscription: React.FC<OverlaySubscriptionProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-white/10 bg-opacity-90 flex items-center justify-center px-4 sm:px-6 md:px-8">
-      <div className="relative w-full max-w-5xl bg-black border border-white/10 rounded-2xl p-4 sm:p-6 md:p-8 text-white shadow-2xl overflow-y-auto max-h-[90vh]">
+    <div className="fixed inset-0 z-50 bg-black/20 bg-opacity-90 flex items-center justify-center px-4 sm:px-6 md:px-8">
+      <div className="relative w-full max-w-5xl bg-black border border-white/10 rounded-2xl p-4 sm:p-6 md:p-8 text-white shadow-2xl overflow-y-auto max-h-[90vh] neon-border">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -81,7 +82,10 @@ const OverlaySubscription: React.FC<OverlaySubscriptionProps> = ({
             <ul className="list-disc list-inside text-sm sm:text-base text-gray-300 space-y-1">
               <li>Storefront Management: Customize your seller profile.</li>
               <li>Unlimited Listings: No cap on uploads.</li>
-              <li>Priority Support: Dedicated seller assistance.</li>
+              <li>
+                Discoverablity: Allow buyer to discover you with Featured
+                Products.
+              </li>
             </ul>
           </div>
         </div>

@@ -580,7 +580,7 @@ function ImageSlider({
                 src={src || "/placeholder.svg"}
                 alt={`Product image ${index + 1}`}
                 fill
-                className="object-cover"
+                className="rounded-lg object-contain"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
             </div>
