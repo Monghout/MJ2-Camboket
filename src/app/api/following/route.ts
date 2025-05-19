@@ -12,14 +12,17 @@ export async function GET(request: Request) {
       );
     }
 
+    // Get the base URL from the current request
+    const baseUrl = new URL(request.url).origin;
+
     // Fetch all data in parallel rather than sequentially
     const [livestreamsRes, usersRes] = await Promise.all([
       fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/livestreams`,
+        `${baseUrl}/api/livestreams`,
         { next: { revalidate: 30 } } // Cache for 30 seconds
       ),
       fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/user`,
+        `${baseUrl}/api/user`,
         { next: { revalidate: 60 } } // Cache for 60 seconds
       ),
     ]);
