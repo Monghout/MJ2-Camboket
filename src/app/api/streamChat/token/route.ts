@@ -11,25 +11,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Verify that environment variables are available
-    const apiKey = process.env.STREAM_API_KEY;
-    const apiSecret = process.env.STREAM_API_SECRET;
+    const serverClient = StreamChat.getInstance(
+      process.env.STREAM_API_KEY!,
+      process.env.STREAM_API_SECRET!
+    );
 
-    if (!apiKey || !apiSecret) {
-      console.error("Stream API credentials are missing");
-      return NextResponse.json(
-        { error: "Server configuration error" },
-        { status: 500 }
-      );
-    }
-
-    // Initialize the Stream client with proper error handling
-    const serverClient = new StreamChat(apiKey, apiSecret);
-
-    // Create token with explicit expiration (optional)
-    const expirationTime = Math.floor(Date.now() / 1000) + 60 * 60; // 1 hour expiration
-    const token = serverClient.createToken(userId, expirationTime);
-
+    const token = serverClient.createToken(userId);
     return NextResponse.json({ token }, { status: 200 });
   } catch (error) {
     console.error("Error generating Stream Chat token:", error);
