@@ -11,7 +11,7 @@
   "dependencies": {
     "@clerk/nextjs": "^6.10.6",
     "@edgestore/react": "^0.3.3",
-    "@edgestore/server": "^0.3.3",
+    "@edgestore/server": "^0.5.7",
     "@googlemaps/js-api-loader": "^1.16.8",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
